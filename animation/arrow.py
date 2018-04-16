@@ -4,7 +4,7 @@
 #
 # Arrow object for animations
 
-from line import *
+from animation.line import *
 import pyglet as pg
 import math
 

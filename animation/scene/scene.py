@@ -4,7 +4,6 @@
 #
 # Scene interface for animations
 
-
 class Scene(object):
     def __init__(self, winsz):
         #Window size
