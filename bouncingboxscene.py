@@ -7,6 +7,7 @@ from scene import *
 from widget import *
 from box import *
 from arrow import *
+from circle import *
 import math
 import random
 
@@ -21,6 +22,7 @@ class BouncingBoxScene(Scene):
         self.box1 = Box(50,50,300,150, r=0,g=255,b=0,alpha=250)
         self.box2 = Box(400,100,500,200, r=255,g=0,b=0,alpha=0)
         self.line1 = Arrow(50,50,400,100,width=10,headsize=20)
+        self.circle1 = Circle(600,200,50)
         self.loadwidget = LoadingBar(self.sz_,100,150,50)
         
         #Scene-specific variablesclass Scene(object):class Scene(object):
@@ -32,6 +34,7 @@ class BouncingBoxScene(Scene):
 
     def draw(self):
         self.box1.draw()
+        self.circle1.draw()
         self.line1.draw()
         self.box2.draw()
         self.loadwidget.draw()

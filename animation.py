@@ -6,11 +6,13 @@
 
 import pyglet as pg 
 from bouncingboxscene import *
+from circletest import *
 
 class Animation(pg.window.Window):
     def __init__(self, *args, **kwargs):
         super(Animation, self).__init__(*args, **kwargs)
-        self.scene1 = BouncingBoxScene(self.get_size())
+        #self.scene1 = BouncingBoxScene(self.get_size())
+        self.scene1 = TestCircle(self.get_size())
 
     def on_draw(self):
         self.clear()
