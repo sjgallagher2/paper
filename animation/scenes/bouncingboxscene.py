@@ -4,10 +4,10 @@
 #
 # A scene which has a box bouncing in the frame
 from scene import *
-from widget import *
-from box import *
-from arrow import *
-from circle import *
+from ..widgets.widget import *
+from ..box import *
+from ..arrow import *
+from ..circle import *
 import math
 import random
 
