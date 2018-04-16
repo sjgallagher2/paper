@@ -1,6 +1,6 @@
 
-from paper.scene.scene import *
-from paper.circle import *
+from paper.core import Scene
+from paper.primitives import Circle
 
 class TestCircle(Scene):
     def __init__(self,winsz):

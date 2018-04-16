@@ -6,8 +6,8 @@
 # difference is the context you use them in. Any scene can be used as a widget, but
 # you should subclass widgets instead for better organization.
 
-from paper.scene.scene import *
-from paper.box import *
+from paper.core import Scene
+from paper.primitives import Box
 
 class Widget(Scene):
     def __init__(self,winsz):

@@ -3,11 +3,9 @@
 # 12 April 2018
 #
 # A scene which has a box bouncing in the frame
-from paper.scene.scene import *
-from paper.widget.widget import *
-from paper.box import *
-from paper.arrow import *
-from paper.circle import *
+from paper.core import Scene
+from paper.widget import LoadingBar
+from paper.primitives import Box,Arrow,Circle
 import math
 import random
 
