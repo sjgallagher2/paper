@@ -4,7 +4,7 @@
 #
 # A scene which has a box bouncing in the frame
 from scene import *
-from ..widgets.widget import *
+from ..widget.widget import *
 from ..box import *
 from ..arrow import *
 from ..circle import *
