@@ -1,6 +1,6 @@
 
-from animation.scene.scene import *
-from animation.circle import *
+from paper.scene.scene import *
+from paper.circle import *
 
 class TestCircle(Scene):
     def __init__(self,winsz):

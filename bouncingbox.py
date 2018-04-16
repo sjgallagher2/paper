@@ -5,8 +5,8 @@
 # Bouncing box animation
 
 import pyglet as pg
-from animation.animationwindow import *
-from animation.scene.bouncingboxscene import *
+from paper.animationwindow import *
+from paper.scene.bouncingboxscene import *
 
 class BouncingBoxAnimation(AnimationWindow):
     def __init__(self,*args,**kwargs):

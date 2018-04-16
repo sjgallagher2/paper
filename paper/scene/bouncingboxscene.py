@@ -3,11 +3,11 @@
 # 12 April 2018
 #
 # A scene which has a box bouncing in the frame
-from animation.scene.scene import *
-from animation.widget.widget import *
-from animation.box import *
-from animation.arrow import *
-from animation.circle import *
+from paper.scene.scene import *
+from paper.widget.widget import *
+from paper.box import *
+from paper.arrow import *
+from paper.circle import *
 import math
 import random
 
