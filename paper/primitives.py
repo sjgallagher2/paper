@@ -188,11 +188,7 @@ class Line(object):
     def getAngle(self, radians=True):
         deltax = self.verts_[2] - self.verts_[0]
         deltay = self.verts_[3] - self.verts_[1]
-        arg = math.atan(deltay/deltax)
-        if deltax < 0:
-            arg = arg + math.pi
-        if radians == False:
-            arg = arg*180/math.pi
+        arg = math.atan2(deltay,deltax)
         return arg
     
     def setPosA(self,x,y):
@@ -204,6 +200,37 @@ class Line(object):
     def setPos(self,x1,y1,x2,y2):
         self.verts_ = (x1,y1, x2,y2)
         self.vert_list_.vertices = self.verts_
+    def scaleLength(self,scalefactor):
+        length = scalefactor*self.getLength()
+        angle = self.getAngle()
+        x = length*math.cos(angle) + self.verts_[0]
+        y = length*math.sin(angle) + self.verts_[1]
+        self.verts_ = self.verts_[0:2] + (x,y)
+        self.vert_list_.vertices = self.verts_
+    def setLength(self,length):
+        angle = self.getAngle()
+        x = length*math.cos(angle) + self.verts_[0]
+        y = length*math.sin(angle) + self.verts_[1]
+        self.verts_ = self.verts_[0:2] + (x,y)
+        self.vert_list_.vertices = self.verts_
+    def setAngle(self,angle):
+        length = self.getLength()
+        x = length*math.cos(angle) + self.verts_[0]
+        y = length*math.sin(angle) + self.verts_[1]
+        self.verts_ = self.verts_[0:2] + (x,y)
+        self.vert_list_.vertices = self.verts_
+    def setDirection(self,x,y,absolute=False):
+        #Set angle so that the arrow points to (x,y)
+        if absolute == False:
+            #Set direction relative to position
+            angle = math.atan2(y-self.verts_[1],x-self.verts_[0])
+        else:
+            #Set direction relative to (0,0)
+            angle = math.atan2(y,x)
+        self.setAngle(angle)
+    def rotate(self,angle):
+        angle = angle + self.getAngle()
+        self.setAngle(angle)
     def setColor(self,r,g,b,alpha):
         rgba = (r,g,b,alpha)
         self.vert_list_.colors = rgba + rgba
@@ -221,8 +248,13 @@ class Arrow(Line):
         Line.__init__(self,x1,y1,x2,y2,width,r,g,b,alpha)
         self.headsize_ = headsize
         self.headang_ = headang*math.pi/180
-        self.angle_ = self.getAngle()
         
+        #Adjust for arrowhead by reducing length
+        angle = self.getAngle()
+        Line.setPosB(self,x2 - self.width_*math.cos(angle), 
+                    y2 - self.width_*math.sin(angle))
+        
+        #Create arrowhead
         self.arrowhead_ = pg.graphics.vertex_list(3,
             ('v2f',self.getHeadVerts_()),
             ('c4B',self.rgba_ + self.rgba_ + self.rgba_)
@@ -233,27 +265,69 @@ class Arrow(Line):
         self.vert_list_.draw(pg.gl.GL_LINES)
         self.arrowhead_.draw(pg.gl.GL_POLYGON)
     
+    def getLength(self):
+        deltax = self.verts_[2] - self.verts_[0]
+        deltay = self.verts_[3] - self.verts_[1]
+        norm = math.sqrt(math.pow(deltax,2) + math.pow(deltay,2)) + self.width_
+        return norm
+    
     def setPosA(self,x,y):
         self.verts_ = (x,y) + self.verts_[2:4]
         self.vert_list_.vertices = self.verts_
         self.arrowhead_.vertices = self.getHeadVerts_()
     def setPosB(self,x,y):
         self.angle_ = self.getAngle()
-        x = x - self.width_*math.cos(self.angle_)
+        x = x - self.width_*math.cos(self.angle_) #Correction for width to get pointed tip
         y = y - self.width_*math.sin(self.angle_)
         self.verts_ = self.verts_[0:2] + (x,y)
         self.vert_list_.vertices = self.verts_
         self.arrowhead_.vertices = self.getHeadVerts_()
     def setPos(self,x1,y1,x2,y2):
         self.angle_ = self.getAngle()
-        x2 = x2 - self.width_*math.cos(self.angle_)
+        x2 = x2 - self.width_*math.cos(self.angle_) #Correction for width to get pointed tip
         y2 = y2 - self.width_*math.sin(self.angle_)
         self.verts_ = (x1,y1, x2,y2)
         self.vert_list_.vertices = self.verts_
         self.arrowhead_.vertices = self.getHeadVerts_()
+    def scaleLength(self,scalefactor):
+        length = scalefactor*self.getLength() - self.width_
+        angle = self.getAngle()
+        x = length*math.cos(angle) + self.verts_[0]
+        y = length*math.sin(angle) + self.verts_[1]
+        self.verts_ = self.verts_[0:2] + (x,y)
+        self.vert_list_.vertices = self.verts_
+        self.arrowhead_.vertices = self.getHeadVerts_()
+    def setLength(self,length):
+        angle = self.getAngle()
+        length = length-width
+        x = length*math.cos(angle) + self.verts_[0]
+        y = length*math.sin(angle) + self.verts_[1]
+        self.verts_ = self.verts_[0:2] + (x,y)
+        self.vert_list_.vertices = self.verts_
+        self.arrowhead_.vertices = self.getHeadVerts_()
+    def setAngle(self,angle):
+        length = self.getLength() - self.width_
+        x = length*math.cos(angle) + self.verts_[0]
+        y = length*math.sin(angle) + self.verts_[1]
+        self.verts_ = self.verts_[0:2] + (x,y)
+        self.vert_list_.vertices = self.verts_
+        self.arrowhead_.vertices = self.getHeadVerts_()
+    def setDirection(self,x,y,absolute=False):
+        #Set angle so that the arrow points to (x,y)
+        if absolute == False:
+            #Set direction relative to position
+            angle = math.atan2(y-self.verts_[1],x-self.verts_[0])
+        else:
+            #Set direction relative to (0,0)
+            angle = math.atan2(y,x)
+        self.setAngle(angle)
+    def rotate(self,angle):
+        angle = angle + self.getAngle()
+        self.setAngle(angle)
     def setColor(self,r,g,b,alpha):
         rgba = (r,g,b,alpha)
         self.vert_list_.colors = rgba + rgba
+        self.arrowhead_.colors = rgba + rgba + rgba
 
     def getHeadVerts_(self):
         self.angle_ = self.getAngle()
