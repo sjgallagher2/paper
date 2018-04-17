@@ -224,7 +224,7 @@ class Arrow(Line):
         self.angle_ = self.getAngle()
         
         self.arrowhead_ = pg.graphics.vertex_list(3,
-            ('v2f',self.getHeadVerts()),
+            ('v2f',self.getHeadVerts_()),
             ('c4B',self.rgba_ + self.rgba_ + self.rgba_)
         )
     
@@ -236,26 +236,26 @@ class Arrow(Line):
     def setPosA(self,x,y):
         self.verts_ = (x,y) + self.verts_[2:4]
         self.vert_list_.vertices = self.verts_
-        self.arrowhead_.vertices = self.getHeadVerts()
+        self.arrowhead_.vertices = self.getHeadVerts_()
     def setPosB(self,x,y):
         self.angle_ = self.getAngle()
         x = x - self.width_*math.cos(self.angle_)
         y = y - self.width_*math.sin(self.angle_)
         self.verts_ = self.verts_[0:2] + (x,y)
         self.vert_list_.vertices = self.verts_
-        self.arrowhead_.vertices = self.getHeadVerts()
+        self.arrowhead_.vertices = self.getHeadVerts_()
     def setPos(self,x1,y1,x2,y2):
         self.angle_ = self.getAngle()
         x2 = x2 - self.width_*math.cos(self.angle_)
         y2 = y2 - self.width_*math.sin(self.angle_)
         self.verts_ = (x1,y1, x2,y2)
         self.vert_list_.vertices = self.verts_
-        self.arrowhead_.vertices = self.getHeadVerts()
+        self.arrowhead_.vertices = self.getHeadVerts_()
     def setColor(self,r,g,b,alpha):
         rgba = (r,g,b,alpha)
         self.vert_list_.colors = rgba + rgba
 
-    def getHeadVerts(self):
+    def getHeadVerts_(self):
         self.angle_ = self.getAngle()
         tipCX = self.verts_[2] + self.width_*math.cos(self.angle_)
         tipCY = self.verts_[3] + self.width_*math.sin(self.angle_)
@@ -275,3 +275,79 @@ class Arrow(Line):
         tipBY = tipCY - tipBY
         tipVerts = (tipCX,tipCY,tipAX,tipAY,tipBX,tipBY)
         return tipVerts
+
+
+class Text(object):
+    def __init__(self,text,posx,posy,
+                fontname='Times New Roman',fontsize=20,
+                anchorx='left',anchory='center',
+                rgba = (255,255,255,255),bold=False,italic=False,
+                multiline=False,width=None):
+        self.text_ = text
+        self.fontname_ = fontname
+        self.fontsize_ = fontsize
+        self.posx_ = posx
+        self.posy_ = posy
+        self.anchorx_ = anchorx
+        self.anchory_ = anchory
+        self.rgba_ = rgba
+        self.bold_ = bold
+        self.italic_ = italic
+        self.multiline_ = multiline
+        self.width_ = width
+
+        self.label_ = pg.text.Label(self.text_,font_name=self.fontname_,
+                                    font_size=self.fontsize_,
+                                    x=self.posx_,y=self.posy_,
+                                    anchor_x=self.anchorx_,anchor_y=self.anchory_,
+                                    color=self.rgba_,bold=self.bold_,italic=self.italic_,
+                                    multiline=self.multiline_,width=self.width_)
+    def draw(self):
+        self.label_.draw()
+
+    def getPosX(self):
+        return self.posx_
+    def getPosY(self):
+        return self.posy_
+    def getFontSize(self):
+        return self.fontsize_
+    def getFontName(self):
+        return self.fontname_
+    def getAnchorX(self):
+        return self.anchorx_
+    def getAnchorY(self):
+        return self.anchory_
+
+    def setPos(self,posx,posy):
+        self.posx_ = posx
+        self.posy_ = posy
+        self.label_.x = self.posx_
+        self.label_.y = self.posy_
+    def setSize(self,fontsize):
+        self.fontsize_ = fontsize
+        self.label.font_size = self.fontsize_
+    def move(self,dx,dy):
+        self.posx_ = self.posx_ + dx
+        self.posy_ = self.posy_ + dy
+        self.label_.x = self.posx_
+        self.label_.y = self.posy_
+    def scale(self,scalefactor):
+        self.fontsize_ = self.fontsize_ * scalefactor
+        self.label_.font_size = self.fontsize_
+    def setAnchorX(self,anchorx):
+        self.anchorx_ = anchorx
+        self.label_.anchor_x = self.anchorx_
+    def setAnchorY(self,anchory):
+        self.anchory_ = anchory
+        self.label_.anchor_y = self.anchory_
+    def setColor(self,rgba):
+        self.rgba_ = rgba
+        self.label_.color = self.rgba_
+    def setMultiline(self,multiline):
+        self.multiline_ = multiline
+        self.label_.multiline = self.multiline_
+    def setWidth(self,width):
+        if self.multiline_ == True:
+            self.width_ = width
+            self.label_.width = self.width_
+

@@ -7,6 +7,7 @@
 
 import pyglet as pg
 from paper.core import AnimationWindow
+from paper.primitives import Text
 from paper.scenes.boxpop import BoxPopScene
 
 class PoppingBoxAnimation(AnimationWindow):
@@ -17,6 +18,9 @@ class PoppingBoxAnimation(AnimationWindow):
         self.scene3 = BoxPopScene(self.get_size(),2.1,500,300)
         self.scene4 = BoxPopScene(self.get_size(),2.4,650,300)
         self.scene5 = BoxPopScene(self.get_size(),2.7,800,300)
+        self.sceneText = Text("Box pop-up animation",100,550,
+                            fontname="Futura",fontsize=20,
+                            anchorx="left")
 
     def on_draw(self):
         self.clear()
@@ -25,6 +29,7 @@ class PoppingBoxAnimation(AnimationWindow):
         self.scene3.draw()
         self.scene4.draw()
         self.scene5.draw()
+        self.sceneText.draw()
 
     def update(self,dt):
         self.scene1.update(dt)

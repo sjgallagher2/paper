@@ -24,16 +24,19 @@ class BoxPopScene(Scene):
     def update(self,dt):
         if self.state_ == "init":
             self.state_ = "wait"
+
         elif self.state_ == "wait":
             if self.tcount > self.delaytime:
                 self.tcount = 0.0
                 self.state_ = "setvisible"
             else:
                 self.tcount = self.tcount + dt
+
         elif self.state_ == "setvisible":
             #Pop box into existance
             self.box1.setColor(120,0,120,255)
             self.state_ = "pop"
+
         elif self.state_ == "pop":
             self.tcount = self.tcount + dt
             scalefactor = 1 + 0.3*math.exp(-3*self.tcount)*math.sin(15*self.tcount)
@@ -41,7 +44,26 @@ class BoxPopScene(Scene):
                 self.box1.setSize(self.boxlen*scalefactor,self.boxheight*scalefactor,centered=True)
             else:
                 self.box1.setSize(self.boxlen,self.boxheight,centered=True)
+                self.tcount = 0
+                self.state_ = "wait2"
+
+        elif self.state_ == "wait2":
+            self.tcount = self.tcount + dt
+            if self.tcount > self.delaytime + 2:
+                self.tcount = 0.0
+                self.state_ = "unpop"
+            else:
+                self.tcount = self.tcount + dt
+
+        elif self.state_ == "unpop":
+            self.tcount = self.tcount + dt
+            scalefactor = 1 + 0.3*math.exp(5*self.tcount)*math.sin(15*self.tcount)
+            if self.box1.getHeight() > 1:
+                self.box1.setSize(self.boxlen*scalefactor,self.boxheight*scalefactor,centered=True)
+            else:
+                self.box1.setColor(r=0,g=0,b=0,alpha=255)
                 self.state_ = "default"
+
         elif self.state_ == "default":
             pass
 
