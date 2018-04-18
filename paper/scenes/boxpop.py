@@ -28,7 +28,8 @@ class BoxPopScene(Scene):
         elif self.state_ == "wait":
             if self.tcount > self.delaytime:
                 self.tcount = 0.0
-                self.state_ = "setvisible"
+                #self.state_ = "setvisible"
+                self.state_ = "fadein"
             else:
                 self.tcount = self.tcount + dt
 
@@ -39,19 +40,25 @@ class BoxPopScene(Scene):
 
         elif self.state_ == "pop":
             self.tcount = self.tcount + dt
-            scalefactor = 1 + 0.3*math.exp(-3*self.tcount)*math.sin(15*self.tcount)
-            if self.tcount < 1.5:
-                self.box1.setSize(self.boxlen*scalefactor,self.boxheight*scalefactor,centered=True)
+            if self.box1.popUpState(self.tcount,1.5,self.boxlen,self.boxheight,intensity=0.3,damping=10) > 0:
+                pass
             else:
-                self.box1.setSize(self.boxlen,self.boxheight,centered=True)
-                self.tcount = 0
                 self.state_ = "wait2"
+
+        elif self.state_ == "fadein":
+            self.tcount = self.tcount + dt
+            if self.box1.fadeState(self.tcount,dt,1.5,[0,0,0,255],[120,0,120,255],"in") > 0:
+                pass
+            else:
+                self.state_ = "wait2"
+
 
         elif self.state_ == "wait2":
             self.tcount = self.tcount + dt
-            if self.tcount > self.delaytime + 2:
+            if self.tcount > 2:
                 self.tcount = 0.0
-                self.state_ = "unpop"
+                #self.state_ = "unpop"
+                self.state_ = "fadeout"
             else:
                 self.tcount = self.tcount + dt
 
@@ -63,6 +70,22 @@ class BoxPopScene(Scene):
             else:
                 self.box1.setColor(r=0,g=0,b=0,alpha=255)
                 self.state_ = "default"
+
+        elif self.state_ == "fadeout":
+            self.tcount = self.tcount + dt
+            if self.box1.fadeState(self.tcount,dt,1.5,[0,0,0,255],[120,0,120,255],"out") > 0:
+                pass
+            else:
+                self.state_ = "wait3"
+        
+        elif self.state_ == "wait3":
+            self.tcount = self.tcount + dt
+            if self.tcount > 4:
+                self.tcount = 0.0
+                #self.state_ = "unpop"
+                self.state_ = "fadein"
+            else:
+                self.tcount = self.tcount + dt
 
         elif self.state_ == "default":
             pass

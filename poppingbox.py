@@ -18,7 +18,7 @@ class PoppingBoxAnimation(AnimationWindow):
         self.scene3 = BoxPopScene(self.get_size(),2.1,500,300)
         self.scene4 = BoxPopScene(self.get_size(),2.4,650,300)
         self.scene5 = BoxPopScene(self.get_size(),2.7,800,300)
-        self.sceneText = Text("Box pop-up animation",100,550,
+        self.sceneText = Text("Box fade in animation",100,550,
                             fontname="Futura",fontsize=20,
                             anchorx="left")
 
@@ -37,6 +37,7 @@ class PoppingBoxAnimation(AnimationWindow):
         self.scene3.update(dt)
         self.scene4.update(dt)
         self.scene5.update(dt)
+
 
 if __name__ == '__main__':
     master = PoppingBoxAnimation(1200,600)

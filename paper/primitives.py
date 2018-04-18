@@ -11,11 +11,12 @@ class Box(object):
         self.height_ = height
 
         verts = (self.posx_,self.posy_, self.posx_+self.length_,self.posy_, self.posx_+self.length_,self.posy_+self.height_, self.posx_,self.posy_+self.height_)
-        self.rgba_ = (r, g, b, alpha)
+        self.rgba_ = [r, g, b, alpha]
+        rgba = [math.floor(r), math.floor(g), math.floor(b), math.floor(alpha)] #Only use floors but store fractional parts too
 
         self.vert_list_ = pg.graphics.vertex_list(4, 
             ('v2f', verts),
-            ('c4B', self.rgba_ + self.rgba_ + self.rgba_ + self.rgba_)  #Color for each vertice
+            ('c4B', rgba + rgba + rgba + rgba)  #Color for each vertice
         )
 
     def draw(self):
@@ -29,6 +30,8 @@ class Box(object):
         return self.length_
     def getHeight(self):
         return self.height_
+    def getColor(self):
+        return self.rgba_
 
     def setPos(self,posx,posy):
         self.posx_ = posx
@@ -63,7 +66,9 @@ class Box(object):
         self.vert_list_.vertices = verts
     
     def setColor(self,r,g,b,alpha):
-        rgba = [r, g, b, alpha]
+        self.rgba_ = [r,g,b,alpha] #Store absolute (including fractional) values for color
+        #Only use the floors to set the vertex color
+        rgba = [math.floor(r), math.floor(g), math.floor(b), math.floor(alpha)]
         self.vert_list_.colors = rgba + rgba + rgba + rgba
     
     def outOfBounds(self, xbound, ybound):
@@ -76,10 +81,89 @@ class Box(object):
     def getVerts(self):
         return [self.posx_,self.posy_, self.posx_+self.length_,self.posy_, self.posx_+self.length_,self.posy_+self.height_, self.posx_,self.posy_+self.height_]
 
+    def popUpState(self,t,tpop,length,height,intensity=0.3,damping=3):
+        """
+        @brief
+        Box popup animation for use in a state machine
+        
+        @param
+        t         Elapsed time (seconds) for popup, starting at 0
+        tpop      Time to stop the box pop animation (hard stop)
+        length    Final box length
+        height    Final box height
+        intensity   Controls amplitude of popping/bouncing (optional)
+        damping     Controls duration of popping/bouncing (optional)
+        
+        @return
+        1         Animation continues
+        -1        Animation complete
+        
+        Use this in a state machine by storing the elapsed time, and changing
+        state only when -1 is returned
+        """
+        scalefactor = 1 + intensity*math.exp(-damping*t)*math.sin(15*t)
+        if t < tpop:
+            self.setSize(length*scalefactor,height*scalefactor,centered=True)
+            return 1 #Animation continues
+        else:
+            self.setSize(length,height,centered=True)
+            return -1 #Animation complete
+    def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
+        """
+        @brief
+        Fade in or out animation for primitives for use in a state machine
+
+        @param
+        t           Elapsed time (seconds) starting at 0 (update every call)
+        dt          Time (seconds) since last update
+        tfade       Time (seconds) for the fade in (constant through animation)
+        bgcolor     Color of background in RGBA list (integers between 0 and 255)
+        objcolor    Final color of object in RGBA list (integers between 0 and 255)
+        direction   Direction of fade, "in" or "out"
+
+        @returns
+        1           Animation continues
+        -1          Animation complete
+        """
+        #First time steps, reset object color
+        if t == 0 or t == dt:
+            if direction == "in":
+                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
+            elif direction == "out":
+                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
+        if direction == "in":
+            redrate = (objcolor[0]-bgcolor[0])/tfade    #These should remain constant through the animation
+            greenrate = (objcolor[1]-bgcolor[1])/tfade 
+            bluerate = (objcolor[2]-bgcolor[2])/tfade 
+        elif direction == "out":
+            redrate = (bgcolor[0]-objcolor[0])/tfade    #These should remain constant through the animation
+            greenrate = (bgcolor[1]-objcolor[1])/tfade 
+            bluerate = (bgcolor[2]-objcolor[2])/tfade 
+        r = self.getColor()[0]
+        g = self.getColor()[1]
+        b = self.getColor()[2]
+
+        if t < tfade:
+            #Change color
+            dr = redrate*dt
+            dg = greenrate*dt
+            db = bluerate*dt
+            self.setColor(r+dr, g+dg, b+db, 255)
+            return 1
+        else:
+            if direction == "in":
+                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
+            elif direction == "out":
+                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
+
+            return -1
+
+
+
 # Circles have a fixed radius, and ideally an infinite number of vertices. However,
 # we can't actually draw an infinite number of vertices, so we have to approximate. 
 # Approximating requires a number of vertices N separated by some constant angle, and
-# this can be computationally expensive if we're not careful. A rotation matrix will
+# this can be computationally expensive if we're not careful. A rotation matrix is
 # used to calculate the position of the vertices, thus eliminating many expensive sine/cosine
 # functions.
 
@@ -113,17 +197,20 @@ class Circle(object):
         return self.rad_
     def getNVerts(self):
         return self.nVerts_
+    def getColor(self):
+        return self.rgba_
     
-    def move(self,posx,posy):
+    def move(self,dx,dy):
+        self.posx_ = self.posx_ + dx
+        self.posy_ = self.posy_ + dy
+        for i in range(0,self.nVerts_*2,2):
+            self.verts_[i] = self.verts_[i] + dx
+            self.verts_[i+1] = self.verts_[i+1] + dy
+        self.vert_list_.vertices = self.verts_
+    def setPos(self,posx,posy):
         deltax = posx - self.posx_
         deltay = posy - self.posy_
-        self.posx_ = posx
-        self.posy_ = posy
-        
-        for i in range(0,self.nVerts_*2,2):
-            self.verts_[i] = self.verts_[i] + deltax
-            self.verts_[i+1] = self.verts_[i+1] + deltay
-        self.vert_list_.vertices = self.verts_
+        self.move(deltax,deltay)
     def setRadius(self,rad):
         self.rad_ = rad
         #Recalculate the circle
@@ -142,6 +229,9 @@ class Circle(object):
             ('v2f',self.getVerts_()),
             ('c4B',self.getColors_())
         )
+    def setColor(self,r,g,b,alpha=255):
+        self.rgba_ = [r,g,b,alpha]
+        self.vert_list_.colors = self.getColors_()
 
     def getVerts_(self):
         #Start with a circle around the origin
@@ -156,10 +246,86 @@ class Circle(object):
             verts[j+1] = verts[j+1] + self.posy_
         return verts
     def getColors_(self):
-        rgba = self.rgba_
+        rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         for i in range(1,self.nVerts_):
             rgba = rgba + self.rgba_
         return rgba
+
+    def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
+        """
+        @brief
+        Fade in or out animation for primitives for use in a state machine
+
+        @param
+        t           Elapsed time (seconds) starting at 0 (update every call)
+        dt          Time (seconds) since last update
+        tfade       Time (seconds) for the fade in (constant through animation)
+        bgcolor     Color of background in RGBA list (integers between 0 and 255)
+        objcolor    Final color of object in RGBA list (integers between 0 and 255)
+        direction   Direction of fade, "in" or "out"
+
+        @returns
+        1           Animation continues
+        -1          Animation complete
+        """
+        #First time steps, reset object color
+        if t == 0 or t == dt:
+            if direction == "in":
+                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
+            elif direction == "out":
+                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
+        if direction == "in":
+            redrate = (objcolor[0]-bgcolor[0])/tfade    #These should remain constant through the animation
+            greenrate = (objcolor[1]-bgcolor[1])/tfade 
+            bluerate = (objcolor[2]-bgcolor[2])/tfade 
+        elif direction == "out":
+            redrate = (bgcolor[0]-objcolor[0])/tfade    #These should remain constant through the animation
+            greenrate = (bgcolor[1]-objcolor[1])/tfade 
+            bluerate = (bgcolor[2]-objcolor[2])/tfade 
+        r = self.getColor()[0]
+        g = self.getColor()[1]
+        b = self.getColor()[2]
+
+        if t < tfade:
+            #Change color
+            dr = redrate*dt
+            dg = greenrate*dt
+            db = bluerate*dt
+            self.setColor(r+dr, g+dg, b+db, 255)
+            return 1
+        else:
+            if direction == "in":
+                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
+            elif direction == "out":
+                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
+
+            return -1
+    def popUpState(self,t,tpop,radius,intensity=0.3,damping=3):
+        """
+        @brief
+        Circle popup animation for use in a state machine
+        
+        @param
+        t           Elapsed time (seconds) for popup, starting at 0
+        tpop        Time to stop animation (hard stop)
+        radius      Final radius of circle
+        intensity   Controls amplitude of popping/bouncing (optional)
+        damping     Controls duration of popping/bouncing (optional)
+        
+        @return
+        1           Animation continues
+        -1          Animation complete
+        
+        Use this in a state machine by storing the elapsed time, and changing
+        state only when -1 is returned
+        """
+        scalefactor = 1 + intensity*math.exp(-damping*t)*math.sin(15*t)
+        if t < tpop:
+            self.setRadius(radius*scalefactor)
+            return 1 #Animation continues
+        else:
+            self.setRadius(radius)
+            return -1 #Animation complete
     
 # Lines have two coordinates, a start and an end, and a width in pixels
 
@@ -168,9 +334,10 @@ class Line(object):
         self.verts_ = (x1,y1, x2,y2)
         self.width_ = width
         self.rgba_ = (r, g, b, alpha)
+        rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.vert_list_ = pg.graphics.vertex_list(2,
             ('v2f',self.verts_),
-            ('c4B', self.rgba_ + self.rgba_)
+            ('c4B', rgba + rgba)
         )
     def draw(self):
         pg.gl.glLineWidth(self.width_)
@@ -190,6 +357,8 @@ class Line(object):
         deltay = self.verts_[3] - self.verts_[1]
         arg = math.atan2(deltay,deltax)
         return arg
+    def getColor(self):
+        return self.rgba_
     
     def setPosA(self,x,y):
         self.verts_ = (x,y) + self.verts_[2:4]
@@ -232,10 +401,59 @@ class Line(object):
         angle = angle + self.getAngle()
         self.setAngle(angle)
     def setColor(self,r,g,b,alpha):
-        rgba = (r,g,b,alpha)
+        rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.vert_list_.colors = rgba + rgba
     def setWidth(self,w):
         self.width_ = w
+    def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
+        """
+        @brief
+        Fade in or out animation for primitives for use in a state machine
+
+        @param
+        t           Elapsed time (seconds) starting at 0 (update every call)
+        dt          Time (seconds) since last update
+        tfade       Time (seconds) for the fade in (constant through animation)
+        bgcolor     Color of background in RGBA list (integers between 0 and 255)
+        objcolor    Final color of object in RGBA list (integers between 0 and 255)
+        direction   Direction of fade, "in" or "out"
+
+        @returns
+        1           Animation continues
+        -1          Animation complete
+        """
+        #First time steps, reset object color
+        if t == 0 or t == dt:
+            if direction == "in":
+                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
+            elif direction == "out":
+                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
+        if direction == "in":
+            redrate = (objcolor[0]-bgcolor[0])/tfade    #These should remain constant through the animation
+            greenrate = (objcolor[1]-bgcolor[1])/tfade 
+            bluerate = (objcolor[2]-bgcolor[2])/tfade 
+        elif direction == "out":
+            redrate = (bgcolor[0]-objcolor[0])/tfade    #These should remain constant through the animation
+            greenrate = (bgcolor[1]-objcolor[1])/tfade 
+            bluerate = (bgcolor[2]-objcolor[2])/tfade 
+        r = self.getColor()[0]
+        g = self.getColor()[1]
+        b = self.getColor()[2]
+
+        if t < tfade:
+            #Change color
+            dr = redrate*dt
+            dg = greenrate*dt
+            db = bluerate*dt
+            self.setColor(r+dr, g+dg, b+db, 255)
+            return 1
+        else:
+            if direction == "in":
+                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
+            elif direction == "out":
+                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
+
+            return -1
 
 # The arrow object is a line with a triangle at its tip. The length of the line
 # is shortened by the width of the line to give the tip a sharp point. The end
@@ -249,6 +467,8 @@ class Arrow(Line):
         self.headsize_ = headsize
         self.headang_ = headang*math.pi/180
         
+        rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
+        
         #Adjust for arrowhead by reducing length
         angle = self.getAngle()
         Line.setPosB(self,x2 - self.width_*math.cos(angle), 
@@ -257,7 +477,7 @@ class Arrow(Line):
         #Create arrowhead
         self.arrowhead_ = pg.graphics.vertex_list(3,
             ('v2f',self.getHeadVerts_()),
-            ('c4B',self.rgba_ + self.rgba_ + self.rgba_)
+            ('c4B',rgba + rgba + rgba)
         )
     
     def draw(self):
@@ -325,7 +545,7 @@ class Arrow(Line):
         angle = angle + self.getAngle()
         self.setAngle(angle)
     def setColor(self,r,g,b,alpha):
-        rgba = (r,g,b,alpha)
+        rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.vert_list_.colors = rgba + rgba
         self.arrowhead_.colors = rgba + rgba + rgba
 
@@ -355,7 +575,7 @@ class Text(object):
     def __init__(self,text,posx,posy,
                 fontname='Times New Roman',fontsize=20,
                 anchorx='left',anchory='center',
-                rgba = (255,255,255,255),bold=False,italic=False,
+                rgba = [255,255,255,255],bold=False,italic=False,
                 multiline=False,width=None):
         self.text_ = text
         self.fontname_ = fontname
@@ -370,11 +590,13 @@ class Text(object):
         self.multiline_ = multiline
         self.width_ = width
 
+        rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
+
         self.label_ = pg.text.Label(self.text_,font_name=self.fontname_,
                                     font_size=self.fontsize_,
                                     x=self.posx_,y=self.posy_,
                                     anchor_x=self.anchorx_,anchor_y=self.anchory_,
-                                    color=self.rgba_,bold=self.bold_,italic=self.italic_,
+                                    color=rgba,bold=self.bold_,italic=self.italic_,
                                     multiline=self.multiline_,width=self.width_)
     def draw(self):
         self.label_.draw()
@@ -391,6 +613,8 @@ class Text(object):
         return self.anchorx_
     def getAnchorY(self):
         return self.anchory_
+    def getColor(self):
+        return self.rgba_
 
     def setPos(self,posx,posy):
         self.posx_ = posx
@@ -416,7 +640,9 @@ class Text(object):
         self.label_.anchor_y = self.anchory_
     def setColor(self,rgba):
         self.rgba_ = rgba
-        self.label_.color = self.rgba_
+        
+        rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
+        self.label_.color = rgba
     def setMultiline(self,multiline):
         self.multiline_ = multiline
         self.label_.multiline = self.multiline_
@@ -424,4 +650,81 @@ class Text(object):
         if self.multiline_ == True:
             self.width_ = width
             self.label_.width = self.width_
+    def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
+        """
+        @brief
+        Fade in or out animation for primitives for use in a state machine
+
+        @param
+        t           Elapsed time (seconds) starting at 0 (update every call)
+        dt          Time (seconds) since last update
+        tfade       Time (seconds) for the fade in (constant through animation)
+        bgcolor     Color of background in RGBA list (integers between 0 and 255)
+        objcolor    Final color of object in RGBA list (integers between 0 and 255)
+        direction   Direction of fade, "in" or "out"
+
+        @returns
+        1           Animation continues
+        -1          Animation complete
+        """
+        #First time steps, reset object color
+        if t == 0 or t == dt:
+            if direction == "in":
+                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
+            elif direction == "out":
+                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
+        if direction == "in":
+            redrate = (objcolor[0]-bgcolor[0])/tfade    #These should remain constant through the animation
+            greenrate = (objcolor[1]-bgcolor[1])/tfade 
+            bluerate = (objcolor[2]-bgcolor[2])/tfade 
+        elif direction == "out":
+            redrate = (bgcolor[0]-objcolor[0])/tfade    #These should remain constant through the animation
+            greenrate = (bgcolor[1]-objcolor[1])/tfade 
+            bluerate = (bgcolor[2]-objcolor[2])/tfade 
+        r = self.getColor()[0]
+        g = self.getColor()[1]
+        b = self.getColor()[2]
+
+        if t < tfade:
+            #Change color
+            dr = redrate*dt
+            dg = greenrate*dt
+            db = bluerate*dt
+            self.setColor(r+dr, g+dg, b+db, 255)
+            return 1
+        else:
+            if direction == "in":
+                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
+            elif direction == "out":
+                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
+
+            return -1
+    def popUpState(self,t,tpop,fontsize,intensity=0.3,damping=3):
+        """
+        @brief
+        Text popup animation for use in a state machine
+        
+        @param
+        t           Elapsed time (seconds) for popup, starting at 0
+        tpop        Time to stop animation (hard stop)
+        radius      Final radius of circle
+        intensity   Controls amplitude of popping/bouncing (optional)
+        damping     Controls duration of popping/bouncing (optional)
+        
+        @return
+        1           Animation continues
+        -1          Animation complete
+        
+        Use this in a state machine by storing the elapsed time, and changing
+        state only when -1 is returned
+        """
+        scalefactor = 1 + intensity*math.exp(-damping*t)*math.sin(15*t)
+        if t < tpop:
+            self.setSize(fontsize*scalefactor)
+            return 1 #Animation continues
+        else:
+            self.setSize(fontsize)
+            return -1 #Animation complete
+
+
 

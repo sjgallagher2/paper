@@ -24,6 +24,7 @@ class Scene(object):
         #Window size
         self.sz_ = winsz
         self.state_ = "init"
+        self.deltat = 0.0
 
     def draw(self):
         # Draw all objects

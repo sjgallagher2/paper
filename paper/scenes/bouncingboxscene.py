@@ -21,7 +21,7 @@ class BouncingBoxScene(Scene):
         self.box2 = Box(400,100,500,200, r=255,g=0,b=0,alpha=0)
         self.line1 = Arrow(50,50,400,100,width=10,headsize=20)
         self.circle1 = Circle(600,200,50)
-        self.loadwidget = LoadingBar(self.sz_,100,150,50)
+        self.loadwidget = LoadingBar(winsz=self.sz_, posx=100,posy=150,height=50)
         
         #Scene-specific variablesclass Scene(object):class Scene(object):
         self.vx1 = 50 # Box 1 velocities
@@ -53,7 +53,7 @@ class BouncingBoxScene(Scene):
             deltax = abs(self.box1.getPosX() - self.box2.getPosX())
             deltay = abs(self.box1.getPosY() - self.box2.getPosY())
             origindist = math.sqrt( pow(deltax,2) + pow(deltay,2) )
-            self.loadwidget.update(dt, 100*math.exp(-origindist/200))
+            self.loadwidget.setProgress(100*math.exp(-origindist/200))
 
             if self.box1.outOfBounds(self.sz_[0],self.sz_[1]) != "none" or self.box2.outOfBounds(self.sz_[0],self.sz_[1]) != "none":
                 self.state_ = "bounce"
