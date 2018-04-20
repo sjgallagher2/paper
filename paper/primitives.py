@@ -388,19 +388,15 @@ class Line(object):
         y = length*math.sin(angle) + self.verts_[1]
         self.verts_ = self.verts_[0:2] + (x,y)
         self.vert_list_.vertices = self.verts_
-    def setDirection(self,x,y,absolute=False):
+    def setDirection(self,x,y):
         #Set angle so that the arrow points to (x,y)
-        if absolute == False:
-            #Set direction relative to position
-            angle = math.atan2(y-self.verts_[1],x-self.verts_[0])
-        else:
-            #Set direction relative to (0,0)
-            angle = math.atan2(y,x)
+        angle = math.atan2(y-self.verts_[1],x-self.verts_[0])
         self.setAngle(angle)
     def rotate(self,angle):
         angle = angle + self.getAngle()
         self.setAngle(angle)
     def setColor(self,r,g,b,alpha):
+        self.rgba_ = [r,g,b,alpha]
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.vert_list_.colors = rgba + rgba
     def setWidth(self,w):
@@ -454,6 +450,37 @@ class Line(object):
                 self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
 
             return -1
+    def extendState(self,t,dt,textend,x,y):
+        """
+        @brief
+        Line extending animation state for state machine
+
+        @params
+        t       Elapsed time for animation (starting at 0)
+        dt      Time since last update
+        textend Time to stop extending
+        x       Final position x to point to (absolute)
+        y       Final position y to point to (absolute)
+        
+        @return
+        1       Animation continues
+        -1      Animation finished
+        """
+        deltaLength = math.sqrt(math.pow(x - self.verts_[0],2)+math.pow(y - self.verts_[1],2))
+        lengthRate = deltaLength/textend
+        if t == 0 or t == dt:
+            self.setLength(5)
+            self.setDirection(x,y)
+
+        if t < textend:
+            self.setLength(self.getLength() + lengthRate*dt)
+            self.setDirection(x,y)
+            return 1
+        else:
+            self.setPosB(x,y)
+            return -1
+            
+
 
 # The arrow object is a line with a triangle at its tip. The length of the line
 # is shortened by the width of the line to give the tip a sharp point. The end
@@ -519,7 +546,7 @@ class Arrow(Line):
         self.arrowhead_.vertices = self.getHeadVerts_()
     def setLength(self,length):
         angle = self.getAngle()
-        length = length-width
+        length = length-self.width_
         x = length*math.cos(angle) + self.verts_[0]
         y = length*math.sin(angle) + self.verts_[1]
         self.verts_ = self.verts_[0:2] + (x,y)
@@ -545,6 +572,7 @@ class Arrow(Line):
         angle = angle + self.getAngle()
         self.setAngle(angle)
     def setColor(self,r,g,b,alpha):
+        self.rgba_ = [r,g,b,alpha]
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.vert_list_.colors = rgba + rgba
         self.arrowhead_.colors = rgba + rgba + rgba
