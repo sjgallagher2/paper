@@ -601,7 +601,7 @@ class Arrow(Line):
 
 class Text(object):
     def __init__(self,text,posx,posy,
-                fontname='Times New Roman',fontsize=20,
+                fontname='Futura',fontsize=20,
                 anchorx='left',anchory='center',
                 rgba = [255,255,255,255],bold=False,italic=False,
                 multiline=False,width=None):
@@ -629,6 +629,8 @@ class Text(object):
     def draw(self):
         self.label_.draw()
 
+    def getText(self):
+        return self.text_
     def getPosX(self):
         return self.posx_
     def getPosY(self):
@@ -644,6 +646,9 @@ class Text(object):
     def getColor(self):
         return self.rgba_
 
+    def setText(self,text):
+        self.text_ = text
+        self.label_.text = self.text_
     def setPos(self,posx,posy):
         self.posx_ = posx
         self.posy_ = posy
@@ -668,7 +673,6 @@ class Text(object):
         self.label_.anchor_y = self.anchory_
     def setColor(self,rgba):
         self.rgba_ = rgba
-        
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.label_.color = rgba
     def setMultiline(self,multiline):
