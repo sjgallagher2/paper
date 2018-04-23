@@ -2,7 +2,7 @@
 import math
 import random
 from paper.core import Scene
-from paper.primitives import Box,Circle,Text
+from paper.primitives import Box,Circle,Text,Arrow
 from paper.widget import Widget,LoadingBar
 
 class HTMColumn(Widget):
@@ -14,10 +14,14 @@ class HTMColumn(Widget):
         self.ncells_ = 6
         self.cellrad_ = (self.width_*0.5)/2 #Cell takes up 50% of column width
         self.deltat = 0.0
-        self.objects["0.outline"] = Box(self.posx_,self.posy_, self.width_,self.height_) #White outline box
+        self.outlineWidth = 2
+        self.objects["0.outline"] = Box(self.posx_-self.outlineWidth,self.posy_-self.outlineWidth, 
+                                        self.width_ + 2*self.outlineWidth,self.height_ + 2*self.outlineWidth,
+                                        r=0,g=0,b=0,alpha=255) #red outline box
+        self.objects["1.background"] = Box(self.posx_,self.posy_, self.width_,self.height_) #White background box
         cellspacing = self.height_/(self.ncells_+1)
         for i in range(1,self.ncells_+1):
-            self.objects[str(i)+".Cell" + str(i)] = Circle(self.posx_+self.width_/2,self.posy_+(i)*cellspacing,self.cellrad_,
+            self.objects[str(i+1)+".Cell" + str(i)] = Circle(self.posx_+self.width_/2,self.posy_+(i)*cellspacing,self.cellrad_,
                                 r=200,g=200,b=200)
     
     def getActiveCells(self):
@@ -35,7 +39,22 @@ class HTMColumn(Widget):
                 if self.getCellNumber_(name) == cellid:
                     return [obj.getPosX(),obj.getPosY()]
         return []
+    def getColPos(self,side="top"):
+        #Get position on the edge of the column in the middle of the edge
+        if side == "top":
+            return [self.posx_ + self.width_/2, self.posy_ + self.height_]
+        elif side == "bottom":
+            return [self.posx_ + self.width_/2, self.posy_]
+        elif side == "left":
+            return [self.posx_, self.posy_ + self.height_/2]
+        elif side == "right":
+            return [self.posx_ + self.width_, self.posy_ + self.height/2]
 
+    def setOutline(self,outline = True):
+        if outline == True:
+            self.objects["0.outline"].setColor(255,0,0,255)
+        else:
+            self.objects["0.outline"].setColor(0,0,0,255)
     def setActiveCells(self,activelist): 
         for name,obj in self.objects.items():  #Reset cell colors
             if "Cell" in name:
@@ -71,16 +90,29 @@ class BitElement(Widget):
         self.objects["1.bg"] = Box(self.posx_,self.posy_,self.width_,self.height_)
         self.objects["2.bit"] = Text("0",self.posx_+ self.width_/2 - self.fontsize_/2,self.posy_+self.fontsize_, rgba=[0,0,0,255],fontsize=self.fontsize_)
     
+    def getBitValue(self):
+        return int(self.objects["2.bit"].getText())
+
     def randomInput(self):
         random.seed()
         r = random.randint(0,1)
         self.objects["2.bit"].setText(str(r))
-    def shadeActive(self):
-        #Changes background color to a light green
-        if self.objects["2.bit"].getText() == "1":
-            self.objects["1.bg"].setColor(r=155,g=200,b=155,alpha=255)
-
-
+    def shadeBit(self,active=True,connected=True):
+        if active == True:
+            if connected == True:
+                # Active and connected synapse
+                self.objects["1.bg"].setColor(r=155,g=250,b=155,alpha=255)
+            else:
+                # Active but no connected synapse
+                self.objects["1.bg"].setColor(r=255,g=255,b=0,alpha=255)
+        else:
+            if connected == True:
+                # Connected but not active
+                self.objects["1.bg"].setColor(r=255,g=155,b=155,alpha=255)
+            else:
+                # Not connected, not active
+                self.objects["1.bg"].setColor(r=255,g=255,b=255,alpha=255)
+    
 
 class InputSpace(Widget):
     def __init__(self,winsz,posx,posy,spacesize):
@@ -90,7 +122,7 @@ class InputSpace(Widget):
         self.spacewidth_ = 30
         self.length_ = self.nspaces_*self.spacewidth_
         self.objects["00.outline"] = Box(self.posx_,self.posy_,self.length_,self.height_)
-            
+        self.deltat = 0.0
         
         for i in range(1,self.nspaces_+1):  #Range() is exclusive on the upper limit
             if i < 10:
@@ -114,7 +146,8 @@ class InputSpace(Widget):
     def shadeActiveBits(self):
         for name,obj in self.objects.items():
             if "bit" in name:
-                obj.shadeActive()
+                if obj.getBitValue() == 1:
+                    obj.shadeBit(active=True,connected=True)
 
     def getBitNumber_(self,name):
         if "bit" in name:
@@ -123,6 +156,36 @@ class InputSpace(Widget):
         else:
             return -1
 
+class Dendrite(Widget):
+    def __init__(self,winsz,columns,inputspace,cell=-1,bit=1,perm=0.5):
+        Widget.__init__(self,winsz,0,0)
+        self.cols = columns
+        self.inputs = inputspace
+        self.cell = cell
+        self.bit = bit
+        self.perm = perm
+        self.threshold = 0.3
+        self.connected = False
+
+        if self.perm > self.threshold:
+            self.connected = True
+        
+        self.arrowPosA = [0,0]
+        if cell == -1:
+            self.arrowPosA = self.cols.getColPos(side="top")
+        elif cell > 0:
+            self.arrowPosA = self.cols.getCellPos(self.cell)
+        self.arrowPosB = self.inputs.getBitPos(self.bit)
+
+        self.objects["0.arrow1"] = Arrow(self.arrowPosA[0],self.arrowPosA[1],
+                                        self.arrowPosB[0], self.arrowPosB[1],
+                                        width=5,headsize=15)
+        self.objects["1.permanenceBar"] = LoadingBar(winsz, self.arrowPosB[0]-10,self.arrowPosB[1]+50,100)
+        self.objects["1.permanenceBar"].setProgress(100*self.perm)
+        if self.connected == True:
+            self.objects["1.permanenceBar"].setBarColor(r=50,g=255,b=50)
+        else:
+            self.objects["1.permanenceBar"].setBarColor(r=255,g=50,b=50)
 
 
 class ColumnTestScene(Scene):
@@ -130,21 +193,18 @@ class ColumnTestScene(Scene):
         Scene.__init__(self,winsz)
         self.col1 = HTMColumn(winsz,100,100,3)
         self.input1 = InputSpace(winsz,100,400,10)
-    
+        self.dendrite = Dendrite(winsz,self.col1,self.input1,bit=8,perm=0.1)
+        self.dendrite.objects["1.permanenceBar"].setVisible(False)
+
     def draw(self):
         self.col1.draw()
         self.input1.draw()
+        self.dendrite.draw()
     
     def update(self,dt):
         self.deltat = self.deltat + dt
-        
         if self.deltat == dt:
             self.input1.setRandomInput()
             self.input1.shadeActiveBits()
-
-        self.col1.update(dt)
-        if math.floor(self.deltat)%2 == 0:
-            self.col1.setActiveCells([1,3])
-        else:
-            self.col1.setActiveCells([])
-
+        if self.deltat > 3:
+            self.dendrite.objects["1.permanenceBar"].setVisible(True)

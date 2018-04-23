@@ -51,6 +51,13 @@ class Widget(Scene):
     def move(self,dx,dy):
         for name,obj in self.objects.items():
             obj.move(dx,dy)
+    def setVisible(self,visible=False):
+        if visible == False:
+            for _,obj in self.objects.items():
+                obj.setVisible(False)
+        else:
+            for _,obj in self.objects.items():
+                obj.setVisible(True)
 
 
 
@@ -73,10 +80,10 @@ class LoadingBar(Widget):
                             r=self.barr_,g=self.barg_,b=self.barb_)
     
     def setProgress(self, prog):
-        if self.state_ == "init":
-            #Initial state
-            self.objects["2.progress"].setSize(self.objects["2.progress"].getLength(), 1)
-            self.state_ = "load"
-        elif self.state_ == "load":
-            self.objects["2.progress"].setSize(self.objects["2.progress"].getLength(), self.objects["1.emptybar"].getHeight()*(prog/100.0))
+        self.objects["2.progress"].setSize(self.objects["2.progress"].getLength(), self.objects["1.emptybar"].getHeight()*(prog/100.0))
+    def setBarColor(self, r,g,b,alpha=255):
+        self.barr_ = r
+        self.barg_ = g
+        self.barb_ = b
+        self.objects["2.progress"].setColor(r,g,b,alpha)
 

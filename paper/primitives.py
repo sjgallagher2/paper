@@ -18,9 +18,11 @@ class Box(object):
             ('v2f', verts),
             ('c4B', rgba + rgba + rgba + rgba)  #Color for each vertice
         )
+        self.visible_ = True
 
     def draw(self):
-        self.vert_list_.draw(pg.gl.GL_POLYGON)
+        if self.visible_ == True:
+            self.vert_list_.draw(pg.gl.GL_POLYGON)
 
     def getPosX(self):
         return self.posx_
@@ -64,13 +66,11 @@ class Box(object):
         
         verts = self.getVerts()
         self.vert_list_.vertices = verts
-    
     def setColor(self,r,g,b,alpha):
         self.rgba_ = [r,g,b,alpha] #Store absolute (including fractional) values for color
         #Only use the floors to set the vertex color
         rgba = [math.floor(r), math.floor(g), math.floor(b), math.floor(alpha)]
         self.vert_list_.colors = rgba + rgba + rgba + rgba
-    
     def outOfBounds(self, xbound, ybound):
         if self.posx_ + self.length_ > xbound or self.posx_ < 0:
             return "x"
@@ -80,7 +80,11 @@ class Box(object):
             return "none"
     def getVerts(self):
         return [self.posx_,self.posy_, self.posx_+self.length_,self.posy_, self.posx_+self.length_,self.posy_+self.height_, self.posx_,self.posy_+self.height_]
-
+    def setVisible(self,visible=True):
+        if visible == False:
+            self.visible_ = False
+        else:
+            self.visible_ = True
     def popUpState(self,t,tpop,length,height,intensity=0.3,damping=3):
         """
         @brief
@@ -174,6 +178,7 @@ class Circle(object):
         self.rad_ = rad
         self.nVerts_ = N
         self.rgba_ = [r, g, b, alpha]
+        self.visible_ = True
 
         self.theta_ = 2*math.pi/self.nVerts_
         self.cosTheta_ = math.cos(self.theta_)
@@ -187,7 +192,8 @@ class Circle(object):
         )
 
     def draw(self):
-        self.vert_list_.draw(pg.gl.GL_POLYGON)
+        if self.visible_ == True:
+            self.vert_list_.draw(pg.gl.GL_POLYGON)
     
     def getPosX(self):
         return self.posx_
@@ -232,6 +238,11 @@ class Circle(object):
     def setColor(self,r,g,b,alpha=255):
         self.rgba_ = [r,g,b,alpha]
         self.vert_list_.colors = self.getColors_()
+    def setVisible(self,visible=True):
+        if visible == False:
+            self.visible_ = False
+        else:
+            self.visible_ = True
 
     def getVerts_(self):
         #Start with a circle around the origin
@@ -334,14 +345,16 @@ class Line(object):
         self.verts_ = (x1,y1, x2,y2)
         self.width_ = width
         self.rgba_ = (r, g, b, alpha)
+        self.visible_ = True
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.vert_list_ = pg.graphics.vertex_list(2,
             ('v2f',self.verts_),
             ('c4B', rgba + rgba)
         )
     def draw(self):
-        pg.gl.glLineWidth(self.width_)
-        self.vert_list_.draw(pg.gl.GL_LINES)
+        if self.visible_ == True:
+            pg.gl.glLineWidth(self.width_)
+            self.vert_list_.draw(pg.gl.GL_LINES)
     
     def getPosA(self):
         return self.verts_[0:2]
@@ -399,6 +412,11 @@ class Line(object):
         self.rgba_ = [r,g,b,alpha]
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.vert_list_.colors = rgba + rgba
+    def setVisible(self,visible=True):
+        if visible == False:
+            self.visible_ = False
+        else:
+            self.visible_ = True
     def setWidth(self,w):
         self.width_ = w
     def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
@@ -495,6 +513,7 @@ class Arrow(Line):
         self.headang_ = headang*math.pi/180
         
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
+        self.visible_ = True
         
         #Adjust for arrowhead by reducing length
         angle = self.getAngle()
@@ -508,9 +527,10 @@ class Arrow(Line):
         )
     
     def draw(self):
-        pg.gl.glLineWidth(self.width_)
-        self.vert_list_.draw(pg.gl.GL_LINES)
-        self.arrowhead_.draw(pg.gl.GL_POLYGON)
+        if self.visible_ == True:
+            pg.gl.glLineWidth(self.width_)
+            self.vert_list_.draw(pg.gl.GL_LINES)
+            self.arrowhead_.draw(pg.gl.GL_POLYGON)
     
     def getLength(self):
         deltax = self.verts_[2] - self.verts_[0]
@@ -576,6 +596,11 @@ class Arrow(Line):
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.vert_list_.colors = rgba + rgba
         self.arrowhead_.colors = rgba + rgba + rgba
+    def setVisible(self,visible=True):
+        if visible == False:
+            self.visible_ = False
+        else:
+            self.visible_ = True
 
     def getHeadVerts_(self):
         self.angle_ = self.getAngle()
@@ -617,6 +642,7 @@ class Text(object):
         self.italic_ = italic
         self.multiline_ = multiline
         self.width_ = width
+        self.visible_ = True
 
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
 
@@ -627,7 +653,8 @@ class Text(object):
                                     color=rgba,bold=self.bold_,italic=self.italic_,
                                     multiline=self.multiline_,width=self.width_)
     def draw(self):
-        self.label_.draw()
+        if self.visible_ == True:
+            self.label_.draw()
 
     def getText(self):
         return self.text_
@@ -675,6 +702,11 @@ class Text(object):
         self.rgba_ = rgba
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.label_.color = rgba
+    def setVisible(self,visible=True):
+        if visible == False:
+            self.visible_ = False
+        else:
+            self.visible_ = True
     def setMultiline(self,multiline):
         self.multiline_ = multiline
         self.label_.multiline = self.multiline_
