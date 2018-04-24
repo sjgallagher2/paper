@@ -112,18 +112,17 @@ class Box(object):
         else:
             self.setSize(length,height,centered=True)
             return -1 #Animation complete
-    def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
+    def fadeState(self,t,dt,tfade,startcolor,stopcolor):
         """
         @brief
-        Fade in or out animation for primitives for use in a state machine
+        Fade color animation for primitives for use in a state machine
 
         @param
         t           Elapsed time (seconds) starting at 0 (update every call)
         dt          Time (seconds) since last update
         tfade       Time (seconds) for the fade in (constant through animation)
-        bgcolor     Color of background in RGBA list (integers between 0 and 255)
-        objcolor    Final color of object in RGBA list (integers between 0 and 255)
-        direction   Direction of fade, "in" or "out"
+        startcolor  Color of background in RGBA list (integers between 0 and 255)
+        stopcolor   Final color of object in RGBA list (integers between 0 and 255)
 
         @returns
         1           Animation continues
@@ -131,18 +130,10 @@ class Box(object):
         """
         #First time steps, reset object color
         if t == 0 or t == dt:
-            if direction == "in":
-                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
-            elif direction == "out":
-                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
-        if direction == "in":
-            redrate = (objcolor[0]-bgcolor[0])/tfade    #These should remain constant through the animation
-            greenrate = (objcolor[1]-bgcolor[1])/tfade 
-            bluerate = (objcolor[2]-bgcolor[2])/tfade 
-        elif direction == "out":
-            redrate = (bgcolor[0]-objcolor[0])/tfade    #These should remain constant through the animation
-            greenrate = (bgcolor[1]-objcolor[1])/tfade 
-            bluerate = (bgcolor[2]-objcolor[2])/tfade 
+            self.setColor(startcolor[0],startcolor[1],startcolor[2],startcolor[3])
+        redrate = (stopcolor[0]-startcolor[0])/tfade    #These should remain constant through the animation
+        greenrate = (stopcolor[1]-startcolor[1])/tfade 
+        bluerate = (stopcolor[2]-startcolor[2])/tfade 
         r = self.getColor()[0]
         g = self.getColor()[1]
         b = self.getColor()[2]
@@ -155,13 +146,8 @@ class Box(object):
             self.setColor(r+dr, g+dg, b+db, 255)
             return 1
         else:
-            if direction == "in":
-                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
-            elif direction == "out":
-                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
-
+            self.setColor(stopcolor[0],stopcolor[1],stopcolor[2],stopcolor[3])
             return -1
-
 
 
 # Circles have a fixed radius, and ideally an infinite number of vertices. However,
@@ -259,21 +245,21 @@ class Circle(object):
     def getColors_(self):
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         for i in range(1,self.nVerts_):
-            rgba = rgba + self.rgba_
+            rgba = rgba + [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
+
         return rgba
 
-    def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
+    def fadeState(self,t,dt,tfade,startcolor,stopcolor):
         """
         @brief
-        Fade in or out animation for primitives for use in a state machine
+        Fade color animation for primitives for use in a state machine
 
         @param
         t           Elapsed time (seconds) starting at 0 (update every call)
         dt          Time (seconds) since last update
         tfade       Time (seconds) for the fade in (constant through animation)
-        bgcolor     Color of background in RGBA list (integers between 0 and 255)
-        objcolor    Final color of object in RGBA list (integers between 0 and 255)
-        direction   Direction of fade, "in" or "out"
+        startcolor  Color of background in RGBA list (integers between 0 and 255)
+        stopcolor   Final color of object in RGBA list (integers between 0 and 255)
 
         @returns
         1           Animation continues
@@ -281,18 +267,10 @@ class Circle(object):
         """
         #First time steps, reset object color
         if t == 0 or t == dt:
-            if direction == "in":
-                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
-            elif direction == "out":
-                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
-        if direction == "in":
-            redrate = (objcolor[0]-bgcolor[0])/tfade    #These should remain constant through the animation
-            greenrate = (objcolor[1]-bgcolor[1])/tfade 
-            bluerate = (objcolor[2]-bgcolor[2])/tfade 
-        elif direction == "out":
-            redrate = (bgcolor[0]-objcolor[0])/tfade    #These should remain constant through the animation
-            greenrate = (bgcolor[1]-objcolor[1])/tfade 
-            bluerate = (bgcolor[2]-objcolor[2])/tfade 
+            self.setColor(startcolor[0],startcolor[1],startcolor[2],startcolor[3])
+        redrate = (stopcolor[0]-startcolor[0])/tfade    #These should remain constant through the animation
+        greenrate = (stopcolor[1]-startcolor[1])/tfade 
+        bluerate = (stopcolor[2]-startcolor[2])/tfade 
         r = self.getColor()[0]
         g = self.getColor()[1]
         b = self.getColor()[2]
@@ -305,12 +283,9 @@ class Circle(object):
             self.setColor(r+dr, g+dg, b+db, 255)
             return 1
         else:
-            if direction == "in":
-                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
-            elif direction == "out":
-                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
-
+            self.setColor(stopcolor[0],stopcolor[1],stopcolor[2],stopcolor[3])
             return -1
+
     def popUpState(self,t,tpop,radius,intensity=0.3,damping=3):
         """
         @brief
@@ -419,18 +394,17 @@ class Line(object):
             self.visible_ = True
     def setWidth(self,w):
         self.width_ = w
-    def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
+    def fadeState(self,t,dt,tfade,startcolor,stopcolor):
         """
         @brief
-        Fade in or out animation for primitives for use in a state machine
+        Fade color animation for primitives for use in a state machine
 
         @param
         t           Elapsed time (seconds) starting at 0 (update every call)
         dt          Time (seconds) since last update
         tfade       Time (seconds) for the fade in (constant through animation)
-        bgcolor     Color of background in RGBA list (integers between 0 and 255)
-        objcolor    Final color of object in RGBA list (integers between 0 and 255)
-        direction   Direction of fade, "in" or "out"
+        startcolor  Color of background in RGBA list (integers between 0 and 255)
+        stopcolor   Final color of object in RGBA list (integers between 0 and 255)
 
         @returns
         1           Animation continues
@@ -438,18 +412,10 @@ class Line(object):
         """
         #First time steps, reset object color
         if t == 0 or t == dt:
-            if direction == "in":
-                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
-            elif direction == "out":
-                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
-        if direction == "in":
-            redrate = (objcolor[0]-bgcolor[0])/tfade    #These should remain constant through the animation
-            greenrate = (objcolor[1]-bgcolor[1])/tfade 
-            bluerate = (objcolor[2]-bgcolor[2])/tfade 
-        elif direction == "out":
-            redrate = (bgcolor[0]-objcolor[0])/tfade    #These should remain constant through the animation
-            greenrate = (bgcolor[1]-objcolor[1])/tfade 
-            bluerate = (bgcolor[2]-objcolor[2])/tfade 
+                self.setColor(startcolor[0],startcolor[1],startcolor[2],startcolor[3])
+        redrate = (stopcolor[0]-startcolor[0])/tfade    #These should remain constant through the animation
+        greenrate = (stopcolor[1]-startcolor[1])/tfade 
+        bluerate = (stopcolor[2]-startcolor[2])/tfade 
         r = self.getColor()[0]
         g = self.getColor()[1]
         b = self.getColor()[2]
@@ -462,11 +428,7 @@ class Line(object):
             self.setColor(r+dr, g+dg, b+db, 255)
             return 1
         else:
-            if direction == "in":
-                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
-            elif direction == "out":
-                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
-
+            self.setColor(stopcolor[0],stopcolor[1],stopcolor[2],stopcolor[3])
             return -1
     def extendState(self,t,dt,textend,x,y):
         """
@@ -698,8 +660,8 @@ class Text(object):
     def setAnchorY(self,anchory):
         self.anchory_ = anchory
         self.label_.anchor_y = self.anchory_
-    def setColor(self,rgba):
-        self.rgba_ = rgba
+    def setColor(self,r,g,b,alpha):
+        self.rgba_ = [r,g,b,alpha]
         rgba = [math.floor(self.rgba_[0]),math.floor(self.rgba_[1]),math.floor(self.rgba_[2]),math.floor(self.rgba_[3])]
         self.label_.color = rgba
     def setVisible(self,visible=True):
@@ -714,18 +676,17 @@ class Text(object):
         if self.multiline_ == True:
             self.width_ = width
             self.label_.width = self.width_
-    def fadeState(self,t,dt,tfade,bgcolor,objcolor,direction):
+    def fadeState(self,t,dt,tfade,startcolor,stopcolor):
         """
         @brief
-        Fade in or out animation for primitives for use in a state machine
+        Fade color animation for primitives for use in a state machine
 
         @param
         t           Elapsed time (seconds) starting at 0 (update every call)
         dt          Time (seconds) since last update
         tfade       Time (seconds) for the fade in (constant through animation)
-        bgcolor     Color of background in RGBA list (integers between 0 and 255)
-        objcolor    Final color of object in RGBA list (integers between 0 and 255)
-        direction   Direction of fade, "in" or "out"
+        startcolor  Color of background in RGBA list (integers between 0 and 255)
+        stopcolor   Final color of object in RGBA list (integers between 0 and 255)
 
         @returns
         1           Animation continues
@@ -733,18 +694,10 @@ class Text(object):
         """
         #First time steps, reset object color
         if t == 0 or t == dt:
-            if direction == "in":
-                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
-            elif direction == "out":
-                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
-        if direction == "in":
-            redrate = (objcolor[0]-bgcolor[0])/tfade    #These should remain constant through the animation
-            greenrate = (objcolor[1]-bgcolor[1])/tfade 
-            bluerate = (objcolor[2]-bgcolor[2])/tfade 
-        elif direction == "out":
-            redrate = (bgcolor[0]-objcolor[0])/tfade    #These should remain constant through the animation
-            greenrate = (bgcolor[1]-objcolor[1])/tfade 
-            bluerate = (bgcolor[2]-objcolor[2])/tfade 
+                self.setColor(startcolor[0],startcolor[1],startcolor[2],startcolor[3])
+        redrate = (stopcolor[0]-startcolor[0])/tfade    #These should remain constant through the animation
+        greenrate = (stopcolor[1]-startcolor[1])/tfade 
+        bluerate = (stopcolor[2]-startcolor[2])/tfade 
         r = self.getColor()[0]
         g = self.getColor()[1]
         b = self.getColor()[2]
@@ -757,12 +710,9 @@ class Text(object):
             self.setColor(r+dr, g+dg, b+db, 255)
             return 1
         else:
-            if direction == "in":
-                self.setColor(objcolor[0],objcolor[1],objcolor[2],objcolor[3])
-            elif direction == "out":
-                self.setColor(bgcolor[0],bgcolor[1],bgcolor[2],bgcolor[3])
-
+            self.setColor(stopcolor[0],stopcolor[1],stopcolor[2],stopcolor[3])
             return -1
+ 
     def popUpState(self,t,tpop,fontsize,intensity=0.3,damping=3):
         """
         @brief

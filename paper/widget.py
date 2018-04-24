@@ -58,6 +58,7 @@ class Widget(Scene):
         else:
             for _,obj in self.objects.items():
                 obj.setVisible(True)
+            
 
 
 

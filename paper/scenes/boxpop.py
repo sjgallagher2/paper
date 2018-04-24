@@ -28,8 +28,8 @@ class BoxPopScene(Scene):
         elif self.state_ == "wait":
             if self.tcount > self.delaytime:
                 self.tcount = 0.0
-                self.state_ = "setvisible"
-                #self.state_ = "fadein"
+                #self.state_ = "setvisible"
+                self.state_ = "fadein"
             else:
                 self.tcount = self.tcount + dt
 
@@ -48,7 +48,7 @@ class BoxPopScene(Scene):
 
         elif self.state_ == "fadein":
             self.tcount = self.tcount + dt
-            if self.box1.fadeState(self.tcount,dt,1.5,[0,0,0,255],[120,0,120,255],"in") > 0:
+            if self.box1.fadeState(self.tcount,dt,1.5,[0,0,0,255],[120,0,120,255]) > 0:
                 pass
             else:
                 self.tcount = 0.0
@@ -59,8 +59,8 @@ class BoxPopScene(Scene):
             self.tcount = self.tcount + dt
             if self.tcount > 2:
                 self.tcount = 0.0
-                self.state_ = "unpop"
-                #self.state_ = "fadeout"
+                #self.state_ = "unpop"
+                self.state_ = "fadeout"
             else:
                 self.tcount = self.tcount + dt
 
@@ -75,7 +75,7 @@ class BoxPopScene(Scene):
 
         elif self.state_ == "fadeout":
             self.tcount = self.tcount + dt
-            if self.box1.fadeState(self.tcount,dt,1.5,[0,0,0,255],[120,0,120,255],"out") > 0:
+            if self.box1.fadeState(self.tcount,dt,1.5,[120,0,120,255],[0,0,0,255],) > 0:
                 pass
             else:
                 self.state_ = "wait3"
@@ -84,8 +84,8 @@ class BoxPopScene(Scene):
             self.tcount = self.tcount + dt
             if self.tcount > 4:
                 self.tcount = 0.0
-                self.state_ = "setvisible"
-                #self.state_ = "fadein"
+                #self.state_ = "setvisible"
+                self.state_ = "fadein"
             else:
                 self.tcount = self.tcount + dt
 
