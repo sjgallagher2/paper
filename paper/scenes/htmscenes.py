@@ -13,6 +13,8 @@ class HTMColumn(Widget):
     def __init__(self,winsz,posx,posy,ncells):
         Widget.__init__(self,winsz,posx,posy)
         
+        self.center = -1
+
         self.width_ = 50
         self.height_ = 200
         self.ncells_ = 6
@@ -82,6 +84,7 @@ class HTMColumn(Widget):
         return ret
     
     def setCellPos_(self):
+        cellspacing = self.height_/(self.ncells_+1)
         for name,obj in self.objects.items():
             if "Cell" in name:
                 i = self.getCellNumber_(name)
@@ -116,16 +119,18 @@ class BitElement(Widget):
         random.seed()
         r = random.randint(0,1)
         self.objects["2.bit"].setText(str(r))
-    def shadeBit(self,active=True,connected=True):
-        if active and connected:
-            rgba = [155,250,155,255]
+    def shadeBit(self,active=True,connected=True,rgba=[]):
+        if len(rgba) > 0:
+            rgbaout = rgba
+        elif active and connected:
+            rgbaout = [155,250,155,255]
         elif active and not connected:
-            rgba = [255,255,0,255]
+            rgbaout = [255,255,0,255]
         elif (not active) and connected:
-            rgba = [255,155,155,255]
+            rgbaout = [255,155,155,255]
         elif (not active) and not connected:
-            rgba = [255,255,255,255]
-        self.objects["1.bg"].setColor(rgba[0],rgba[1],rgba[2],rgba[3])
+            rgbaout = [255,255,255,255]
+        self.objects["1.bg"].setColor(rgbaout[0],rgbaout[1],rgbaout[2],rgbaout[3])
 
     def unshadeBit(self):
         self.objects["1.bg"].setColor(r=255,g=255,b=255,alpha=255)
@@ -172,11 +177,20 @@ class InputSpace(Widget):
                     return [x,y]
     def getNumInputs(self):
         return self.nspaces_
+    def getBitValue(self,id):
+        for name,obj in self.objects.items():
+            if self.getBitNumber_(name) == id:
+                return obj.getBitValue()
 
     def setRandomInput(self):
         for name,obj in self.objects.items():
             if "bit" in name:
                 obj.randomInput()
+    def shadeBits(self,bits=[],active=True,connected=True,rgba=[]):
+        for name,obj in self.objects.items():
+            if "bit" in name:
+                if self.getBitNumber_(name) in bits:
+                    obj.shadeBit(active,connected,rgba)
     def shadeActiveBits(self):
         for name,obj in self.objects.items():
             if "bit" in name:
@@ -236,6 +250,8 @@ class Dendrite(Widget):
         else:
             self.objects["1.permanenceBar"].setBarColor(r=255,g=50,b=50)
     
+    def getDendriteValue(self):
+        return self.inputs.getBitValue(self.bit)
     def setPermanenceBarVisible(self,visible = True):
         self.objects["1.permanenceBar"].setVisible(visible)
 
@@ -286,7 +302,10 @@ class ProximalDendriteSegment(Widget):
         bits = []
         perms = []
         for c in range(0,nsynapses):
-            bits.append(random.randint(lowlimit,highlimit))
+            rpos = random.randint(lowlimit,highlimit)
+            while rpos in bits:
+                rpos = random.randint(lowlimit,highlimit)
+            bits.append(rpos)
             perms.append(0.0)
         self.setDendrites(bits,perms)
     def setRandomPerms(self,dist = "normal"):
@@ -298,10 +317,156 @@ class ProximalDendriteSegment(Widget):
                 perms.append(abs(np.random.normal(self.threshold,0.08)))
         self.setDendrites(bits,perms)
         
-    def setRandomDendrites(self,nsynapses):
-        self.setRandomLocations(nsynapses)
+    def setRandomDendrites(self,nsynapses,lowlimit=1,highlimit=-1):
+        self.setRandomLocations(nsynapses,lowlimit=lowlimit,highlimit=highlimit)
         self.setRandomPerms()
         # Sets random positions and permanences 
+
+class SpatialParameters(object):
+    def __init__(self,inputwidth,colpct,inhibitionradius,minoverlap,threshold,globalreceptivefield,receptivefieldsize,syninc,syndec):
+        """
+        Spatial pooling parameters for use initializing a column space.
+
+        @params
+        inputwidth              Number of spaces in the input space
+        colpct                  Sets size of column space by colpct percent of the inputwidth
+        colactivepct            Percent of columns in an inhibition radius that are active
+        inhibitionradius        Number of columns compared for activity
+        minoverlap              Minimum column overlap for consideration of activity
+        threshold               Synapse connection threshold
+        globalreceptivefield    Boolean for global receptive fields
+        receptivefieldsize      Receptive field size per column. Only needed if globalreceptivefield is False
+        syninc                  Synapse permanence increment
+        syndec                  Synapse permanence decrement
+        """
+        self.inputwidth = inputwidth
+        self.colpct = colpct
+        self.inhibitionradius = inhibitionradius
+        self.minoverlap = minoverlap
+        self.threshold = threshold
+        self.globalreceptivefield = globalreceptivefield
+        self.receptivefieldsize = receptivefieldsize
+        self.syninc = syninc
+        self.syndec = syndec
+
+class ColumnSpace(Widget):
+    def __init__(self,winsz,inputspace,spatialparams,height,width):
+        """
+        A column space, which implements the Spatial Pooling algorithm. 
+        
+        @params
+        inputspace      The InputSpace for the columns
+        height          The y-position of the column space
+        """
+        Widget.__init__(self,winsz,0,0)
+        self.input = inputspace
+        self.params = spatialparams
+        self.ncols = math.floor(self.params.inputwidth*self.params.colpct)
+
+        # Distribute the columns through the width of the screen
+        colspacing = width/(self.ncols + 1)/2
+        posx = self.sz_[0]/2 - width/2
+        coln = 1
+
+        for c in range(1,(self.ncols)*2+1,2):
+            # Make a column and dendrite pair
+            keyc = str(c) + ".column" + str(coln)
+            keyd = str(c+1) + ".dendrite" + str(coln)
+            self.objects[keyc] = HTMColumn(winsz,posx + colspacing*c,100,3)
+            self.objects[keyd] = ProximalDendriteSegment(winsz, self.objects[keyc],self.input,[1],[0.0],threshold=self.params.threshold)
+            
+            # Initialize dendrites
+            if self.params.globalreceptivefield:
+                self.objects[keyd].setRandomDendrites(math.ceil(self.params.inputwidth*0.8))
+            else:
+                colcenter = math.floor(self.params.inputwidth/(self.ncols))*coln
+                left = colcenter - math.ceil(self.params.receptivefieldsize/2)
+                right = colcenter + math.floor(self.params.receptivefieldsize/2)
+                if left < 1:
+                    left = 1
+                if right > self.params.inputwidth:
+                    right = self.params.inputwidth
+                self.objects[keyc].center = colcenter
+                self.objects[keyd].setRandomDendrites(math.ceil(self.params.receptivefieldsize*1.0)-1,left,right)
+            
+            self.objects[keyd].setVisible(False)
+            coln = coln + 1
+
+    def showColDendrite(self,col=-1,show=True):
+        if show == True:
+            if col == -1:
+                for name,obj in self.objects.items():
+                    if "dendrite" in name:
+                        obj.setVisible(True)
+            elif col > 0:
+                for name,obj in self.objects.items():
+                    if self.getDendriteSegmentNumber_(name) == col:
+                        obj.setVisible(True)
+        else:
+            for name,obj in self.objects.items():
+                if "dendrite" in name:
+                    obj.setVisible(False)
+    def shadeColCenter(self,col=-1,shade=True,rgba=[]):
+        """ Shades or unshades column center. If col == -1, all column centers are highlighted."""
+        if len(rgba) == 0:
+            rgba = [255,150,150,255]
+        if shade == True:
+            if col == -1:
+                for name,obj in self.objects.items():
+                    if "column" in name:
+                        self.input.shadeBits([obj.center],rgba=rgba)
+            elif col > 0:
+                for name,obj in self.objects.items():
+                    if "column" in name:
+                        if self.getColNumber_(name) == col:
+                            self.input.shadeBits([obj.center],rgba=rgba)
+        else:
+            self.input.unshadeAllBits()
+    def shadeColReceptiveField(self,col=-1,shade=True):
+        if shade == True:
+            if col > 0:
+                for name,obj in self.objects.items():
+                    if "column" in name:
+                        self.input.shadeBits(self.getColReceptiveField(col),rgba=[255,150,150,255])
+                self.shadeColCenter(col=col,rgba=[255,50,50,255])
+        else:
+            self.input.unshadeAllBits()
+    def getColReceptiveField(self,col=1):
+        colcenter = -1
+        for name,obj in self.objects.items():
+            if self.getColNumber_(name) == col:
+                colcenter = obj.center
+        left = colcenter - math.ceil(self.params.receptivefieldsize/2)
+        right = colcenter + math.ceil(self.params.receptivefieldsize/2)
+        if left < 1:
+            left = 1
+        if right > self.params.inputwidth:
+            right = self.params.inputwidth
+        bits = []
+        for b in range(left,right+1):
+            bits.append(b)
+        return bits
+    def shadeColDendrites(self,col=1,shade=True):
+        if shade == True:
+            for name,obj in self.objects.items():
+                if getColNumber_(name) == col:
+                    pass
+
+
+
+    def getColNumber_(self,name):
+        if "column" in name:
+            colnum = name[ (name.find("column")+6) : ]
+            return int(colnum)
+        else:
+            return -1
+    def getDendriteSegmentNumber_(self,name):
+        if "dendrite" in name:
+            dendnum = name[ (name.find("dendrite")+8) : ]
+            return int(dendnum)
+        else:
+            return -1
+
 
 class ColumnScene(Scene):
     def __init__(self,winsz):
@@ -481,32 +646,106 @@ class ColumnScene(Scene):
 class SpatialPoolerScene(Scene):
     def __init__(self,winsz):
         Scene.__init__(self,winsz)
-        self.col1 = HTMColumn(winsz,100,100,3)
-        self.col2 = HTMColumn(winsz,200,100,3)
-        self.col3 = HTMColumn(winsz,300,100,3)
-        self.col4 = HTMColumn(winsz,400,100,3)
-        self.col5 = HTMColumn(winsz,500,100,3)
-        self.input1 = InputSpace(winsz,100,400,30)
-        self.dendrites1 = ProximalDendriteSegment(winsz,self.col1,self.input1,bits=[1,2,4,8],perms=[0.1,0.2,0.3,0.5],threshold=0.2)
-        self.dendrites1.setVisible(False)
+        self.input = InputSpace(winsz,100,400,32)
+        self.spParams = SpatialParameters(inputwidth=32, colpct=0.20, inhibitionradius=4, minoverlap=0, threshold=0.2,
+                                        globalreceptivefield=False, receptivefieldsize=8, syninc=0.1, syndec=0.05)
+        self.colspace = ColumnSpace(winsz,self.input,self.spParams,200,500)
 
         # Text
         self.title = Text("HTM Spatial Pooling",winsz[0]/2,winsz[1]-30,anchorx='center')
-        self.description = Text("Columns are objects that are active (1) or inactive (0) depending on the input space.",
-                                winsz[0]/2-100, 70, fontsize=15,multiline=True,width=winsz[0]/2+50)
+        self.description = Text("Let's bring in more columns. We will initialize each column with a center and potential dendrites covering 80% of the receptive field.",
+                                winsz[0]/2-100, 40, fontsize=15,multiline=True,width=winsz[0]/2+50)
 
 
     def draw(self):
-        self.col1.draw()
-        self.col2.draw()
-        self.col3.draw()
-        self.col4.draw()
-        self.col5.draw()
-        self.input1.draw()
-        self.dendrites1.draw()
+        self.input.draw()
+        self.colspace.draw()
         self.title.draw()
         self.description.draw()
     
     def update(self,dt,keypress=False):
         self.deltat = self.deltat + dt
 
+        if self.state_ == "init":
+            if keypress:
+                self.state_ = "showcol1dendrite"
+        elif self.state_ == "showcol1dendrite":
+            self.colspace.showColDendrite(col=1)
+            self.description.setText("This is the dendrite for column 1, on the far left.")
+            if keypress:
+                self.state_ = "showcol1center"
+        elif self.state_ == "showcol1center":
+            self.colspace.shadeColCenter(col=1)
+            self.description.setText("The center for column 1 is highlighted in red.")
+            if keypress:
+                self.state_ = "showcol1rfield"
+        elif self.state_ == "showcol1rfield":
+            self.colspace.shadeColReceptiveField(col=1)
+            self.description.setText("This is the receptive field of column 1. This is the range of the input space it could use for potential connections.")
+            if keypress:
+                self.state_ = "showcol2"
+        elif self.state_ == "showcol2":
+            self.colspace.shadeColReceptiveField(shade=False)
+            self.colspace.showColDendrite(col=1,show=False)
+            self.colspace.showColDendrite(col=2)
+            self.colspace.shadeColReceptiveField(col=2)
+            self.description.setText("The other columns are initialized in the same way.")
+            if keypress:
+                self.state_ = "showcol3"
+        elif self.state_ == "showcol3":
+            self.colspace.shadeColReceptiveField(shade=False)
+            self.colspace.showColDendrite(col=2,show=False)
+            self.colspace.showColDendrite(col=3)
+            self.colspace.shadeColReceptiveField(col=3)
+            if keypress:
+                self.state_ = "showcol4"
+        elif self.state_ == "showcol4":
+            self.colspace.shadeColReceptiveField(shade=False)
+            self.colspace.showColDendrite(col=3,show=False)
+            self.colspace.showColDendrite(col=4)
+            self.colspace.shadeColReceptiveField(col=4)
+            if keypress:
+                self.state_ = "showcol5"
+        elif self.state_ == "showcol5":
+            self.colspace.shadeColReceptiveField(shade=False)
+            self.colspace.showColDendrite(col=4,show=False)
+            self.colspace.showColDendrite(col=5)
+            self.colspace.shadeColReceptiveField(col=5)
+            if keypress:
+                self.state_ = "showcol6"
+        elif self.state_ == "showcol6":
+            self.colspace.shadeColReceptiveField(shade=False)
+            self.colspace.showColDendrite(col=5,show=False)
+            self.colspace.showColDendrite(col=6)
+            self.colspace.shadeColReceptiveField(col=6)
+            if keypress:
+                self.state_ = "col6text1"
+        elif self.state_ == "col6text1":
+            self.description.setText("Notice how column 6's receptive field is cut off. We could instead have it 'roll over' and use cells on the left of the input space.")
+            if keypress:
+                self.state_ = "col6text2"
+        elif self.state_ == "col6text2":
+            self.description.setText("This is called wrap around, and it can give columns at the edges a better chance at being active. ")
+            if keypress:
+                self.state_ = "hidedendrites"
+        elif self.state_ == "hidedendrites":
+            self.colspace.shadeColReceptiveField(shade=False)
+            self.colspace.showColDendrite(col=6,show=False)
+            self.description.setText("Each column has a few connected synapses out of its potential connections. Let's look at column 1 again.")
+            if keypress:
+                self.state_ = "showcol1again"
+        elif self.state_ == "showcol1again":
+            self.colspace.showColDendrite(col=1,show=True)
+            self.description.setText("Column 1 can only see its receptive field, from which it will have the chance to connect to some of the spaces (the arrows).")
+            if keypress:
+                self.state_ = "col1text2"
+        elif self.state_ == "col1text2":
+            self.description.setText("From its potential connections, only the dendrites with permanences over the threshold are actually used by the column.")
+            if keypress:
+                self.state_ = "end"
+
+        elif self.state_ == "end":
+            pass
+
+
+            

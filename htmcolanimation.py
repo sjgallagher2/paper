@@ -11,12 +11,14 @@ from paper.scenes.htmscenes import ColumnScene,SpatialPoolerScene
 class HTMColAnim(AnimationWindow):
     def __init__(self,saveanimation=False,filename="",*args,**kwargs):
         AnimationWindow.__init__(self,saveanimation,filename,*args, **kwargs)
-        self.scene1 = ColumnScene(self.get_size())
+        #self.scene1 = ColumnScene(self.get_size())
+        self.scene1 = SpatialPoolerScene(self.get_size())
     
     def on_key_press(self,symbol,mods):
         if symbol == pyglet.window.key.ESCAPE:
             #Quit
-            self.saveAnimation()
+            if self.dosave:
+                self.saveAnimation()
             pyglet.app.exit()
         else:
             self.scene1.update(0,keypress=True)
@@ -32,6 +34,6 @@ class HTMColAnim(AnimationWindow):
 
 
 if __name__ == '__main__':
-    master = HTMColAnim(True,"columnintro",1200,600)
+    master = HTMColAnim(False,"spatialpooler",1200,600)
     pyglet.clock.schedule_interval(master.update,1/120.0)
     pyglet.app.run()
