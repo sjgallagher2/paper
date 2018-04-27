@@ -21,13 +21,19 @@ class HTMColumn(Widget):
         self.cellrad_ = (self.width_*0.5)/2 #Cell takes up 50% of column width
         self.deltat = 0.0
         self.outlineWidth = 4
-        self.objects["0.outline"] = Box(self.posx_-self.outlineWidth,self.posy_-self.outlineWidth, 
+        self.objects["2.outline"] = Box(self.posx_-self.outlineWidth,self.posy_-self.outlineWidth, 
                                         self.width_ + 2*self.outlineWidth,self.height_ + 2*self.outlineWidth,
                                         r=0,g=0,b=0,alpha=255) #red outline box
-        self.objects["1.background"] = Box(self.posx_,self.posy_, self.width_,self.height_) #White background box
+        self.objects["3.background"] = Box(self.posx_,self.posy_, self.width_,self.height_) #White background box
+        self.objects["0.overlapbox"] = Box(self.posx_,self.posy_-50,self.width_,50,r=150,g=150,b=150)
+        self.objects["1.overlapscore"] = Text("0",self.posx_+15,self.posy_-25,rgba=[0,0,0,255])
+        
+        self.objects["0.overlapbox"].setVisible(False)
+        self.objects["1.overlapscore"].setVisible(False)
+        
         cellspacing = self.height_/(self.ncells_+1)
-        for i in range(1,self.ncells_+1):
-            self.objects[str(i+1)+".Cell" + str(i)] = Circle(self.posx_+self.width_/2,self.posy_+(i)*cellspacing,self.cellrad_,
+        for i in range(4,self.ncells_+4):
+            self.objects[str(i)+".Cell" + str(i-3)] = Circle(self.posx_+self.width_/2,self.posy_+(i-3)*cellspacing,self.cellrad_,
                                 r=200,g=200,b=200)
     
     def getActiveCells(self):
@@ -56,11 +62,21 @@ class HTMColumn(Widget):
         elif side == "right":
             return [self.posx_ + self.width_, self.posy_ + self.height/2]
 
-    def setOutline(self,outline = True):
-        if outline == True:
-            self.objects["0.outline"].setColor(255,0,0,255)
+    def showOverlap(self,show=True):
+        if show:
+            self.objects["0.overlapbox"].setVisible(True)
+            self.objects["1.overlapscore"].setVisible(True)
         else:
-            self.objects["0.outline"].setColor(0,0,0,255)
+            self.objects["0.overlapbox"].setVisible(False)
+            self.objects["1.overlapscore"].setVisible(False)
+
+    def setOverlap(self,overlap):
+        self.objects["1.overlapscore"].setText(str(overlap))
+    def setOutline(self,outline = True):
+        if outline:
+            self.objects["2.outline"].setColor(255,0,0,255)
+        else:
+            self.objects["2.outline"].setColor(0,0,0,255)
     def setActiveCells(self,activelist): 
         for name,obj in self.objects.items():  #Reset cell colors
             if "Cell" in name:
@@ -70,11 +86,11 @@ class HTMColumn(Widget):
 
     def fadeState(self,t,dt,tfade,startcolor,activecells = [],outline=False):
         if outline == True:
-            self.objects["0.outline"].fadeState(t,dt,tfade,startcolor,[255,0,0,255])
+            self.objects["2.outline"].fadeState(t,dt,tfade,startcolor,[255,0,0,255])
         else:
-            self.objects["0.outline"].fadeState(t,dt,tfade,startcolor,[0,0,0,255])
+            self.objects["2.outline"].fadeState(t,dt,tfade,startcolor,[0,0,0,255])
 
-        ret = self.objects["1.background"].fadeState(t,dt,tfade,startcolor,[255,255,255,255])
+        ret = self.objects["3.background"].fadeState(t,dt,tfade,startcolor,[255,255,255,255])
         for name,obj in self.objects.items():
             if "Cell" in name:
                 if self.getCellNumber_(name) in activecells:
@@ -252,6 +268,21 @@ class Dendrite(Widget):
     
     def getDendriteValue(self):
         return self.inputs.getBitValue(self.bit)
+    def setPermanence(self,perm):
+        if perm > 1:
+            perm = 1
+        elif perm < 0:
+            perm = 0
+        self.perm = perm
+        if self.perm > self.threshold:
+            self.connected = True
+        
+        self.objects["1.permanenceBar"].setProgress(100*self.perm)
+        if self.connected == True:
+            self.objects["1.permanenceBar"].setBarColor(r=50,g=255,b=50)
+        else:
+            self.objects["1.permanenceBar"].setBarColor(r=255,g=50,b=50)
+
     def setPermanenceBarVisible(self,visible = True):
         self.objects["1.permanenceBar"].setVisible(visible)
 
@@ -264,6 +295,7 @@ class ProximalDendriteSegment(Widget):
         self.perms = perms
         self.threshold = threshold
         self.nsynapses = len(self.bits)
+        self.overlap = 0
         self.objindex = 1
         if len(self.bits) != len(self.perms):
             print("Error: Bits and permanences must have the same size")
@@ -272,13 +304,61 @@ class ProximalDendriteSegment(Widget):
         elif max(self.bits) > self.inputs.getNumInputs():
             print("Error: Can't specify a bit outside of the input space")
         else:
-            for s in range(0,self.nsynapses):
-                key = str(self.objindex) + ".synapse" + str(s)
-                self.objects[ key ] = Dendrite(self.sz_,self.cols,self.inputs,bit=self.bits[s],perm=self.perms[s],threshold=self.threshold)
+            for s in range(1,self.nsynapses+1):
+                key = str(self.objindex) + ".dendrite" + str(s)
+                self.objects[ key ] = Dendrite(self.sz_,self.cols,self.inputs,bit=self.bits[s-1],perm=self.perms[s-1],threshold=self.threshold)
                 self.objindex = self.objindex + 1
     def showPermBars(self,show=True):
         for _,obj in self.objects.items():
             obj.setPermanenceBarVisible(show)
+    def getDendriteValue(self,id):
+        for name,obj in self.objects.items():
+            if self.getDendriteNumber_(name) == id:
+                return obj.getBitValue()
+    def getOverlapScore(self):
+        self.overlap = 0
+        for name,obj in self.objects.items():
+            if "dendrite" in name:
+                if obj.connected and obj.getDendriteValue() == 1:
+                    self.overlap = self.overlap + 1
+        return self.overlap
+
+    def shadeConnectedDendrites(self,shade=True):
+        if shade == True:
+            bits = []
+            for name,obj in self.objects.items():
+                if "dendrite" in name:
+                    if obj.connected == True:
+                        bits.append(obj.bit)
+            self.inputs.shadeBits(bits,connected=True)
+        else:
+            self.inputs.unshadeAllBits()
+    def shadeUnconnectedDendrites(self,shade=True):
+        if shade == True:
+            bits = []
+            for name,obj in self.objects.items():
+                if "dendrite" in name:
+                    if obj.connected == False:
+                        bits.append(obj.bit)
+            self.inputs.shadeBits(bits,rgba=[150,150,150,255])
+        else:
+            self.inputs.unshadeAllBits()
+    def shadeDendrites(self,shade=True):
+        # Shades dendrites based on activity and connectedness
+        if shade == True:
+            for name,obj in self.objects.items():
+                if "dendrite" in name:
+                    if obj.connected==True and obj.getDendriteValue()==1:
+                        self.inputs.shadeBits([obj.bit],active=True,connected=True)
+                    elif obj.connected==True and obj.getDendriteValue()==0:
+                        self.inputs.shadeBits([obj.bit],active=False,connected=True)
+                    elif obj.connected==False and obj.getDendriteValue()==1:
+                        self.inputs.shadeBits([obj.bit],active=True,connected=False)
+                    elif obj.connected==False and obj.getDendriteValue()==0:
+                        self.inputs.shadeBits([obj.bit],active=False,connected=False)
+        else:
+            self.inputs.unshadeAllBits()
+
     def setDendrites(self,bits=[],perms=[],threshold=0.2):
         if len(bits) == len(perms):
             self.bits = bits
@@ -287,9 +367,9 @@ class ProximalDendriteSegment(Widget):
             self.nsynapses = len(self.bits)
             self.objindex = 1
             self.obejcts = {}
-            for s in range(0,self.nsynapses):
-                key = str(self.objindex) + ".synapse" + str(s)
-                self.objects[ key ] = Dendrite(self.sz_,self.cols,self.inputs,bit=self.bits[s],perm=self.perms[s],threshold=self.threshold)
+            for s in range(1,self.nsynapses+1):
+                key = str(self.objindex) + ".dendrite" + str(s)
+                self.objects[ key ] = Dendrite(self.sz_,self.cols,self.inputs,bit=self.bits[s-1],perm=self.perms[s-1],threshold=self.threshold)
                 self.objindex = self.objindex + 1
         else:
             print("Error: Number of bits and permanences must be equal")
@@ -301,26 +381,49 @@ class ProximalDendriteSegment(Widget):
             highlimit = self.inputs.getNumInputs()
         bits = []
         perms = []
-        for c in range(0,nsynapses):
+        for c in range(1,nsynapses+1):
             rpos = random.randint(lowlimit,highlimit)
             while rpos in bits:
                 rpos = random.randint(lowlimit,highlimit)
             bits.append(rpos)
             perms.append(0.0)
         self.setDendrites(bits,perms)
+        self.updateSynapses_()
     def setRandomPerms(self,dist = "normal"):
         np.random.seed(int(math.floor(clock()*1e5)))
         bits = self.bits
         perms = []
-        for c in range(0,self.nsynapses):
+        for c in range(1,self.nsynapses+1):
             if dist == "normal":
                 perms.append(abs(np.random.normal(self.threshold,0.08)))
         self.setDendrites(bits,perms)
-        
+        self.updateSynapses_()
     def setRandomDendrites(self,nsynapses,lowlimit=1,highlimit=-1):
         self.setRandomLocations(nsynapses,lowlimit=lowlimit,highlimit=highlimit)
         self.setRandomPerms()
+        self.updateSynapses_()
         # Sets random positions and permanences 
+    def calculateSynapses(self, inc, dec):
+        for name,obj in self.objects.items():
+            if "dendrite" in name:
+                if obj.getDendriteValue() == 1:
+                    obj.setPermanence(obj.perm + inc)
+                else:
+                    obj.setPermanence(obj.perm - dec)
+        self.updateSynapses_()
+
+    def updateSynapses_(self):
+        for name,obj in self.objects.items():
+            if "dendrite" in name:
+                if obj.perm > obj.threshold:
+                    obj.connected = True
+    def getDendriteNumber_(self,name):
+        if "dendrite" in name:
+            dendnum = name[ (name.find("dendrite")+8) : ]
+            return int(dendnum)
+        else:
+            return -1
+
 
 class SpatialParameters(object):
     def __init__(self,inputwidth,colpct,inhibitionradius,minoverlap,threshold,globalreceptivefield,receptivefieldsize,syninc,syndec):
@@ -362,6 +465,7 @@ class ColumnSpace(Widget):
         self.input = inputspace
         self.params = spatialparams
         self.ncols = math.floor(self.params.inputwidth*self.params.colpct)
+        self.overlaps = []
 
         # Distribute the columns through the width of the screen
         colspacing = width/(self.ncols + 1)/2
@@ -391,6 +495,33 @@ class ColumnSpace(Widget):
             
             self.objects[keyd].setVisible(False)
             coln = coln + 1
+    def updateColOverlaps(self):
+        self.overlaps = [0 for x in range(self.ncols)]
+        for name,obj in self.objects.items():
+            if "column" in name:
+                colnumber = self.getColNumber_(name)
+                dendrite = self.getColDendrite_(colnumber)
+                obj.setOverlap(dendrite.getOverlapScore())
+                self.overlaps[colnumber-1] = dendrite.getOverlapScore()
+    def updateColSynapses(self):
+        for name,obj in self.objects.items():
+            if "dendrite" in name:
+                obj.calculateSynapses(self.params.syninc,self.params.syndec)
+
+    def showColOverlap(self,col=-1,show=True):
+        if show:
+            if col > 0:
+                for name,obj in self.objects.items():
+                    if self.getColNumber_(name) == col:
+                        obj.showOverlap()
+            else:
+                for name,obj in self.objects.items():
+                    if "column" in name:
+                        obj.showOverlap()
+        else:
+            for name,obj in self.objects.items():
+                if "column" in name:
+                    obj.showOverlap(False)
 
     def showColDendrite(self,col=-1,show=True):
         if show == True:
@@ -431,6 +562,21 @@ class ColumnSpace(Widget):
                 self.shadeColCenter(col=col,rgba=[255,50,50,255])
         else:
             self.input.unshadeAllBits()
+    def findActiveCols(self):
+        activecols = [1,2] # top 2 columns
+        for c in range(2,len(self.overlaps)+1):
+            if self.overlaps[c-1] > self.overlaps[activecols[0]-1]:
+                activecols[1] = activecols[0]
+                activecols[0] = c
+            elif self.overlaps[c-1] > self.overlaps[activecols[1]-1]:
+                activecols[1] = c
+        for name,obj in self.objects.items():
+            if "column" in name:
+                if self.getColNumber_(name) in activecols:
+                    obj.setOutline(True)
+                else:
+                    obj.setOutline(False)
+
     def getColReceptiveField(self,col=1):
         colcenter = -1
         for name,obj in self.objects.items():
@@ -446,13 +592,18 @@ class ColumnSpace(Widget):
         for b in range(left,right+1):
             bits.append(b)
         return bits
+    def shadeColConnectedDendrites(self,col=1,shade=True):
+        if shade == True:
+            self.getColDendrite_(col).shadeConnectedDendrites()
+            self.getColDendrite_(col).shadeUnconnectedDendrites()
+        else:
+            self.getColDendrite_(col).shadeConnectedDendrites(shade=False)
+            self.getColDendrite_(col).shadeUnconnectedDendrites(shade=False)
     def shadeColDendrites(self,col=1,shade=True):
         if shade == True:
-            for name,obj in self.objects.items():
-                if getColNumber_(name) == col:
-                    pass
-
-
+            self.getColDendrite_(col).shadeDendrites()
+        else:
+            self.getColDendrite_(col).shadeDendrites(shade=False)
 
     def getColNumber_(self,name):
         if "column" in name:
@@ -466,6 +617,11 @@ class ColumnSpace(Widget):
             return int(dendnum)
         else:
             return -1
+    def getColDendrite_(self,col=1):
+        for name,obj in self.objects.items():
+            if "dendrite" in name:
+                if self.getDendriteSegmentNumber_(name) == col:
+                    return obj
 
 
 class ColumnScene(Scene):
@@ -648,7 +804,7 @@ class SpatialPoolerScene(Scene):
         Scene.__init__(self,winsz)
         self.input = InputSpace(winsz,100,400,32)
         self.spParams = SpatialParameters(inputwidth=32, colpct=0.20, inhibitionradius=4, minoverlap=0, threshold=0.2,
-                                        globalreceptivefield=False, receptivefieldsize=8, syninc=0.1, syndec=0.05)
+                                        globalreceptivefield=False, receptivefieldsize=8, syninc=0.5, syndec=0.5)
         self.colspace = ColumnSpace(winsz,self.input,self.spParams,200,500)
 
         # Text
@@ -669,6 +825,8 @@ class SpatialPoolerScene(Scene):
         if self.state_ == "init":
             if keypress:
                 self.state_ = "showcol1dendrite"
+        
+        ### SHOW COLUMN DENDRITES ###
         elif self.state_ == "showcol1dendrite":
             self.colspace.showColDendrite(col=1)
             self.description.setText("This is the dendrite for column 1, on the far left.")
@@ -734,18 +892,118 @@ class SpatialPoolerScene(Scene):
             self.description.setText("Each column has a few connected synapses out of its potential connections. Let's look at column 1 again.")
             if keypress:
                 self.state_ = "showcol1again"
+        
+
+        ### COLUMN 1 IN DETAIL ###
         elif self.state_ == "showcol1again":
             self.colspace.showColDendrite(col=1,show=True)
             self.description.setText("Column 1 can only see its receptive field, from which it will have the chance to connect to some of the spaces (the arrows).")
             if keypress:
                 self.state_ = "col1text2"
         elif self.state_ == "col1text2":
+            self.colspace.shadeColConnectedDendrites(col=1,shade=True)
             self.description.setText("From its potential connections, only the dendrites with permanences over the threshold are actually used by the column.")
             if keypress:
+                self.state_ = "col1text3"
+        elif self.state_ == "col1text3":
+            self.description.setText("We can see bits based on whether they are active (1) or inactive (0), and whether the dendrite synapse is connected or not.")
+            self.colspace.shadeColConnectedDendrites(col=1,shade=False)
+            self.colspace.shadeColDendrites(col=1,shade=True)
+            self.state_ = "col1text4"
+        elif self.state_ == "col1text4":
+            self.description.setText("We have four states. Connected dendrite to active bit, connected dendrite to inactive bit, unconnected dendrite to active"+
+                                    " bit, and unconnected dendrite to inactive bit.")
+            if keypress:
+                self.state_ = "randomdatatext"
+        elif self.state_ == "randomdatatext":
+            self.description.setText("This is not too interesting without data, so let's bring in some random bits.")
+            if keypress:
+                self.state_ = "randomdata"
+        elif self.state_ == "randomdata":
+            self.input.setRandomInput()
+            self.colspace.shadeColDendrites(col=1,shade=True)
+            self.state_ = "legendtext"
+        elif self.state_ == "legendtext":
+            self.description.setText("Here, green spaces are active and connected, yellow are active but not connected, and red are inactive but connected.")
+            if keypress:
+                self.state_ = "overlapscore"
+        
+        ### OVERLAP SCORE ###
+        elif self.state_ == "overlapscore":
+            self.description.setText("For a column, the number of synapses that are connected to active bits is called the 'overlap' of the column.")
+            if keypress:
+                self.state_ = "overlaptext2"
+        elif self.state_ == "overlaptext2":
+            self.description.setText("The overlap, or overlap score, of each column is used to determine which columns can be active. ")
+            if keypress:
+                self.state_ = "overlaptext3"
+        elif self.state_ == "overlaptext3":
+            self.description.setText("We compare a few columns at a time, and the top N columns with the highest overlap scores of those are chosen to be active at this time.")
+            if keypress:
+                self.state_ = "showoverlapscore"
+        elif self.state_ == "showoverlapscore":
+            self.description.setText("Here is the overlap score for column 1.")
+            self.colspace.updateColOverlaps()
+            self.colspace.showColOverlap(1)
+            self.state_ = "wait"
+        elif self.state_ == "wait":
+            if keypress:
+                self.state_ = "alloverlaptext"
+        elif self.state_ == "alloverlaptext":
+            self.description.setText("We can repeat this process for all the other columns.")
+            self.colspace.shadeColDendrites(shade=False)
+            self.colspace.showColDendrite(show=False)
+            if keypress:
+                self.state_ = "showalloverlaps"
+        elif self.state_ == "showalloverlaps":
+            self.colspace.showColDendrite()
+            self.colspace.showColOverlap()
+            if keypress:
+                self.state_ = "getactives"
+        elif self.state_ == "getactives":
+            self.colspace.findActiveCols()
+            self.description.setText("We'll select the top 2 columns as the active columns, from all columns. This is called global inhibition.")
+            if keypress:
+                self.state_ = "neighborhoods"
+        elif self.state_ == "neighborhoods":
+            self.description.setText("The other option is to break the column space up into 'neighborhoods' where the top columns from each neighborhood are chosen.")
+            if keypress:
+                self.state_ = "spatialpooling"
+        elif self.state_ == "spatialpooling":
+            self.description.setText("The active columns at this time step will characterize the input, and by the nature of overlaps, similar inputs will return similar outputs.")
+            if keypress:
+                self.state_ = "sptext2"
+        elif self.state_ == "sptext2":
+            self.colspace.showColDendrite(show=False)
+            self.colspace.showColOverlap(show=False)
+            self.description.setText("Now that we have seen the active columns at this time step, we will update synapses in all the columns.")
+            if keypress:
+                self.state_ = "updatesyn1"
+        elif self.state_ == "updatesyn1":
+            self.description.setText("All synapses, connected or disconnected, are updated each time step during learning.")
+            if keypress:
+                self.state_ = "updatesyn2"
+        elif self.state_ == "updatesyn2":
+            self.description.setText("If the synapse was connected to a 1, an active bit, its permanence is incremented. If the bit was a 0, an inactive bit, the permanence is decremented.")
+            if keypress:
+                self.state_ = "col1syn"
+        elif self.state_ == "col1syn":
+            self.description.setText("Let's look at column 1 again.")
+            self.colspace.showColDendrite(col=1)
+            if keypress:
+                self.state_ = "col1syn2"
+        elif self.state_ == "col1syn2":
+            self.description.setText("We update synapse permanences, and then check which synapses are now connected or disconnected. Let's see an extreme example.")
+            if keypress:
+                self.state_ = "col1synupdate"
+        elif self.state_ == "col1synupdate":
+            self.colspace.updateColSynapses()
+            self.description.setText("Each time step typically results in a small change in synapse permanence, but here we've used large increments and decrements.")
+            if keypress:
                 self.state_ = "end"
-
         elif self.state_ == "end":
-            pass
+            self.colspace.showColDendrite(show=False)
+            self.description.setText("After all synapses are updated, spatial pooling at this time step is complete, the column activity is returned, and we're ready for the next input.")
 
 
             
